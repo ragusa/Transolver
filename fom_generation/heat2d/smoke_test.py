@@ -10,7 +10,7 @@ from .gmsh_mesh import generate_two_material_square_mesh
 
 def run_smoke_test(out_dir=None):
     if out_dir is None:
-        base = Path("data") / "heat2d_smoke"
+        base = Path("fom_generation") / "data" / "heat2d_smoke"
     else:
         base = Path(out_dir)
     base.mkdir(parents=True, exist_ok=True)

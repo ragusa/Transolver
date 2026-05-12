@@ -20,7 +20,7 @@ def manufactured_source(x, y, kappa=1.0):
     return 2.0 * kappa * np.pi**2 * exact_solution(x, y)
 
 
-def run_validation(mesh_sizes=(0.12, 0.06), out_dir="data/heat2d_validation", kappa=1.0):
+def run_validation(mesh_sizes=(0.12, 0.06), out_dir="fom_generation/data/heat2d_validation", kappa=1.0):
     """Run the manufactured-solution check on a sequence of mesh sizes."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -83,7 +83,7 @@ def run_validation(mesh_sizes=(0.12, 0.06), out_dir="data/heat2d_validation", ka
 
 def build_parser():
     parser = argparse.ArgumentParser(description="Validate heat2d with a manufactured solution.")
-    parser.add_argument("--out", default="data/heat2d_validation")
+    parser.add_argument("--out", default="fom_generation/data/heat2d_validation")
     parser.add_argument("--mesh-sizes", nargs="+", type=float, default=[0.12, 0.06])
     parser.add_argument("--kappa", type=float, default=1.0)
     return parser

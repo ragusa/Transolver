@@ -74,7 +74,7 @@ Run:
 python -m fom_generation.heat2d.validate_manufactured --mesh-sizes 0.12 0.06
 ```
 
-The command writes `data/heat2d_validation/manufactured_validation.json` and
+The command writes `fom_generation/data/heat2d_validation/manufactured_validation.json` and
 prints the L2-like relative error for each mesh.
 
 ## Generate a Tiny Dataset
@@ -82,7 +82,7 @@ prints the L2-like relative error for each mesh.
 ```bash
 python -m fom_generation.heat2d.generate_dataset \
   --config fom_generation/heat2d/config_default.json \
-  --out data/heat2d_fom_demo \
+  --out fom_generation/data/heat2d_fom_demo \
   --n-geometries 1 \
   --n-params-per-geometry 1 \
   --plot-first
@@ -91,7 +91,7 @@ python -m fom_generation.heat2d.generate_dataset \
 The output layout is:
 
 ```text
-data/heat2d_fom_demo/
+fom_generation/data/heat2d_fom_demo/
   config_used.json
   geometries/
     geom_00000/
@@ -104,6 +104,55 @@ data/heat2d_fom_demo/
 ```
 
 Each `.npz` sample contains coordinates, triangle connectivity, element material IDs, nodal temperature `T`, parameter names and values, geometry metadata, mesh filename, sample ID, and geometry ID.
+
+## Transolver-Oriented Pilot Dataset
+
+The existing Transolver examples use a few data conventions:
+
+- fixed-grid PDE benchmarks load dense `.mat` or `.npy` tensors with equal
+  node counts per sample;
+- irregular geometry examples use per-case files plus a `manifest.json`, and
+  rely on graph-style or batch-size-one loading for variable node counts.
+
+The randomized heat2d triangular meshes naturally have variable numbers of
+nodes and elements, so the pilot uses one compressed `.npz` per sample plus a
+manifest. Each sample includes raw FEM arrays and Transolver-oriented aliases:
+
+```text
+pos                    (n_nodes, 2)    node coordinates
+node_features          (n_nodes, 8)    kappa/q/material/boundary/parameter features
+input_feature_names    (8,)            names for node_features columns
+target                 (n_nodes, 1)    nodal temperature
+coordinates            (n_nodes, 2)    duplicate of pos for explicit FEM naming
+triangles              (n_elements, 3) triangular connectivity
+element_material_id    (n_elements,)   element physical material tag
+nodal_material_id      (n_nodes,)      rounded node material tag for quick checks
+edge_index             (2, n_edges)    directed triangle-edge graph, optional
+kappa_1, kappa_2       scalar          material diffusion coefficients
+q_1, q_2               scalar          piecewise constant source values
+shape_type             scalar string   disk, square, or triangle
+shape_type_id          scalar int      disk=0, square=1, triangle=2
+geometry_metadata_json scalar string   Gmsh geometry metadata
+boundary_condition     scalar string   T=0 on outer_boundary
+pde_sign_convention    scalar string   -div(kappa grad T)=q
+```
+
+Generate the small pilot:
+
+```bash
+python -m fom_generation.heat2d.generate_pilot_dataset --n-samples 6
+```
+
+Smoke-test loading:
+
+```bash
+python -m fom_generation.heat2d.pilot_loader_smoke_test
+```
+
+Outputs are written under `fom_generation/data/heat2d_pilot/`. For later
+training, variable-size meshes should be handled with batch size 1, a custom
+padding/mask collate function, PyG-style batching, approximately fixed mesh
+sizes, or resampling to a fixed query set.
 
 ## Smoke Test
 
@@ -126,7 +175,7 @@ python -m fom_generation.heat2d.validate_materials
 This generates one disk, square, and triangle inclusion, verifies that material
 tags `1` and `2` both survive import, solves with `kappa_1 != kappa_2` and
 `q_1 = q_2 = 1`, and writes one diagnostic material/temperature image per
-shape under `data/heat2d_material_validation/`.
+shape under `fom_generation/data/heat2d_material_validation/`.
 
 ## Random Geometry Visual Audit
 
@@ -139,7 +188,7 @@ python -m fom_generation.heat2d.validate_geometry_randomization
 This generates a few reproducible randomized disk, rotated square, and rotated
 triangle inclusions, checks that both material tags are nonempty after import,
 and writes cellwise material-ID plots under
-`data/heat2d_geometry_randomization/<shape>/case_*/material_ids.png`.
+`fom_generation/data/heat2d_geometry_randomization/<shape>/case_*/material_ids.png`.
 
 ## Random Geometry Stress Validation
 
@@ -152,7 +201,7 @@ python -m fom_generation.heat2d.validate_geometry_stress --n-geometries 36
 This generates many randomized two-material geometries without solving the PDE,
 checks that both material tags survive import, records any pre-Gmsh rejected
 geometry samples, and saves a representative subset of cellwise material-ID
-plots under `data/heat2d_geometry_stress/`.
+plots under `fom_generation/data/heat2d_geometry_stress/`.
 
 ## Current Limitations
 

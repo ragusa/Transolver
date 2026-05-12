@@ -13,7 +13,7 @@ from .visualize import plot_mesh_with_materials
 
 
 def run_validation(
-    out_dir="data/heat2d_geometry_stress",
+    out_dir="fom_generation/data/heat2d_geometry_stress",
     n_geometries=36,
     seed=20260512,
     mesh_size=0.11,
@@ -111,7 +111,7 @@ def run_validation(
 
 def build_parser():
     parser = argparse.ArgumentParser(description="Stress test randomized heat2d geometries.")
-    parser.add_argument("--out", default="data/heat2d_geometry_stress")
+    parser.add_argument("--out", default="fom_generation/data/heat2d_geometry_stress")
     parser.add_argument("--n-geometries", type=int, default=36)
     parser.add_argument("--seed", type=int, default=20260512)
     parser.add_argument("--mesh-size", type=float, default=0.11)

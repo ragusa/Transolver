@@ -12,7 +12,7 @@ from .visualize import plot_mesh_with_materials, plot_solution
 
 
 def run_validation(
-    out_dir="data/heat2d_material_validation",
+    out_dir="fom_generation/data/heat2d_material_validation",
     shapes=("disk", "square", "triangle"),
     mesh_size=0.07,
     kappa_1=1.0,
@@ -95,7 +95,7 @@ def run_validation(
 
 def build_parser():
     parser = argparse.ArgumentParser(description="Validate two-material heat2d meshes and solves.")
-    parser.add_argument("--out", default="data/heat2d_material_validation")
+    parser.add_argument("--out", default="fom_generation/data/heat2d_material_validation")
     parser.add_argument("--mesh-size", type=float, default=0.07)
     parser.add_argument("--kappa-1", type=float, default=1.0)
     parser.add_argument("--kappa-2", type=float, default=10.0)

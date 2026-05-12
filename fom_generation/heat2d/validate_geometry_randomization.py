@@ -13,7 +13,7 @@ from .visualize import plot_mesh_with_materials
 
 
 def run_validation(
-    out_dir="data/heat2d_geometry_randomization",
+    out_dir="fom_generation/data/heat2d_geometry_randomization",
     examples_per_shape=3,
     seed=12345,
     mesh_size=0.09,
@@ -92,7 +92,7 @@ def run_validation(
 
 def build_parser():
     parser = argparse.ArgumentParser(description="Visual audit for randomized heat2d geometries.")
-    parser.add_argument("--out", default="data/heat2d_geometry_randomization")
+    parser.add_argument("--out", default="fom_generation/data/heat2d_geometry_randomization")
     parser.add_argument("--examples-per-shape", type=int, default=3)
     parser.add_argument("--seed", type=int, default=12345)
     parser.add_argument("--mesh-size", type=float, default=0.09)

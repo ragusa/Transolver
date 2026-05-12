@@ -9,7 +9,7 @@ from .dataset import generate_dataset
 def build_parser():
     parser = argparse.ArgumentParser(description="Generate 2D heat-conduction FOM data.")
     parser.add_argument("--config", default="fom_generation/heat2d/config_default.json")
-    parser.add_argument("--out", default="data/heat2d_fom_demo")
+    parser.add_argument("--out", default="fom_generation/data/heat2d_fom_demo")
     parser.add_argument("--n-geometries", type=int, default=None)
     parser.add_argument("--n-params-per-geometry", type=int, default=None)
     parser.add_argument("--seed", type=int, default=None)
