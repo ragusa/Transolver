@@ -53,6 +53,30 @@ b = q_1 F1 + q_2 F2
 
 Homogeneous Dirichlet conditions are applied only to the `outer_boundary` nodes.
 
+## Manufactured-Solution Validation
+
+The validation driver checks the homogeneous single-material case by using the
+same conductivity in the background and inclusion. For
+
+```text
+T(x, y) = sin(pi x) sin(pi y)
+```
+
+and the implemented sign convention `-div(kappa grad T) = q`, the source is
+
+```text
+q(x, y) = 2 kappa pi^2 sin(pi x) sin(pi y)
+```
+
+Run:
+
+```bash
+python -m fom_generation.heat2d.validate_manufactured --mesh-sizes 0.12 0.06
+```
+
+The command writes `data/heat2d_validation/manufactured_validation.json` and
+prints the L2-like relative error for each mesh.
+
 ## Generate a Tiny Dataset
 
 ```bash
@@ -90,6 +114,45 @@ python -m fom_generation.heat2d.smoke_test
 ```
 
 The smoke test generates disk, square, and triangle inclusions, assembles affine components, solves one positive-source problem, checks zero boundary values, confirms both material tags, and checks the free-degree residual.
+
+## Two-Material Label Validation
+
+Run:
+
+```bash
+python -m fom_generation.heat2d.validate_materials
+```
+
+This generates one disk, square, and triangle inclusion, verifies that material
+tags `1` and `2` both survive import, solves with `kappa_1 != kappa_2` and
+`q_1 = q_2 = 1`, and writes one diagnostic material/temperature image per
+shape under `data/heat2d_material_validation/`.
+
+## Random Geometry Visual Audit
+
+Run:
+
+```bash
+python -m fom_generation.heat2d.validate_geometry_randomization
+```
+
+This generates a few reproducible randomized disk, rotated square, and rotated
+triangle inclusions, checks that both material tags are nonempty after import,
+and writes cellwise material-ID plots under
+`data/heat2d_geometry_randomization/<shape>/case_*/material_ids.png`.
+
+## Random Geometry Stress Validation
+
+Run:
+
+```bash
+python -m fom_generation.heat2d.validate_geometry_stress --n-geometries 36
+```
+
+This generates many randomized two-material geometries without solving the PDE,
+checks that both material tags survive import, records any pre-Gmsh rejected
+geometry samples, and saves a representative subset of cellwise material-ID
+plots under `data/heat2d_geometry_stress/`.
 
 ## Current Limitations
 

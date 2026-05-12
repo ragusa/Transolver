@@ -1,0 +1,36 @@
+{
+  "pde_form": "-div(kappa grad T) = q",
+  "exact_solution": "sin(pi x) sin(pi y)",
+  "source_term": "q = 2 kappa pi^2 sin(pi x) sin(pi y)",
+  "kappa": 1.0,
+  "error_decreases": true,
+  "results": [
+    {
+      "mesh_size": 0.12,
+      "n_nodes": 205,
+      "n_elements": 372,
+      "absolute_l2_error": 0.0023940984903035403,
+      "relative_l2_error": 0.004816401015862767,
+      "relative_residual": 5.291219127105648e-15,
+      "mesh_path": "data\\heat2d_validation\\h_0p12\\mesh.msh"
+    },
+    {
+      "mesh_size": 0.06,
+      "n_nodes": 694,
+      "n_elements": 1318,
+      "absolute_l2_error": 0.0006660260155245972,
+      "relative_l2_error": 0.0013342818693600563,
+      "relative_residual": 1.1053906568764408e-14,
+      "mesh_path": "data\\heat2d_validation\\h_0p06\\mesh.msh"
+    },
+    {
+      "mesh_size": 0.03,
+      "n_nodes": 2611,
+      "n_elements": 5084,
+      "absolute_l2_error": 0.00016670456552382495,
+      "relative_l2_error": 0.0003335512182277348,
+      "relative_residual": 2.089058898668067e-14,
+      "mesh_path": "data\\heat2d_validation\\h_0p03\\mesh.msh"
+    }
+  ]
+}

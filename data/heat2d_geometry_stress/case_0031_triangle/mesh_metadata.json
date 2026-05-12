@@ -1,0 +1,19 @@
+{
+  "shape": "triangle",
+  "outer_length": 1.0,
+  "center": [
+    0.5532535918491285,
+    0.3046170285343224
+  ],
+  "rotation": 2.6479432939790217,
+  "mesh_size_background": 0.11,
+  "mesh_size_interface": 0.055,
+  "safety_margin": 0.06,
+  "physical_tags": {
+    "material_1": 1,
+    "material_2": 2,
+    "outer_boundary": 101
+  },
+  "seed": null,
+  "side_length": 0.2865131419728178
+}

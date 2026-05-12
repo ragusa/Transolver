@@ -1,0 +1,60 @@
+{
+  "pde_form": "-div(kappa grad T) = q",
+  "material_1": "background",
+  "material_2": "inclusion",
+  "outer_boundary": "homogeneous Dirichlet",
+  "all_shapes_passed": true,
+  "results": [
+    {
+      "shape": "disk",
+      "mesh_path": "data\\heat2d_material_validation\\disk\\mesh.msh",
+      "plot_path": "data\\heat2d_material_validation\\disk\\material_and_temperature.png",
+      "n_nodes": 545,
+      "n_elements": 1028,
+      "material_1_elements": 805,
+      "material_2_elements": 223,
+      "n_dirichlet_dofs": 60,
+      "kappa_1": 1.0,
+      "kappa_2": 10.0,
+      "q_1": 1.0,
+      "q_2": 1.0,
+      "min_temperature": 0.0,
+      "max_temperature": 0.06626403306143547,
+      "relative_residual": 5.1672596326081504e-15
+    },
+    {
+      "shape": "square",
+      "mesh_path": "data\\heat2d_material_validation\\square\\mesh.msh",
+      "plot_path": "data\\heat2d_material_validation\\square\\material_and_temperature.png",
+      "n_nodes": 558,
+      "n_elements": 1054,
+      "material_1_elements": 856,
+      "material_2_elements": 198,
+      "n_dirichlet_dofs": 60,
+      "kappa_1": 1.0,
+      "kappa_2": 10.0,
+      "q_1": 1.0,
+      "q_2": 1.0,
+      "min_temperature": 0.0,
+      "max_temperature": 0.06643786622252017,
+      "relative_residual": 4.430051720591535e-15
+    },
+    {
+      "shape": "triangle",
+      "mesh_path": "data\\heat2d_material_validation\\triangle\\mesh.msh",
+      "plot_path": "data\\heat2d_material_validation\\triangle\\material_and_temperature.png",
+      "n_nodes": 507,
+      "n_elements": 952,
+      "material_1_elements": 871,
+      "material_2_elements": 81,
+      "n_dirichlet_dofs": 60,
+      "kappa_1": 1.0,
+      "kappa_2": 10.0,
+      "q_1": 1.0,
+      "q_2": 1.0,
+      "min_temperature": 0.0,
+      "max_temperature": 0.06977266954099846,
+      "relative_residual": 2.482001224441487e-15
+    }
+  ]
+}

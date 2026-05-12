@@ -100,6 +100,11 @@ def _unit_load(v, w):
     return v
 
 
+@BilinearForm
+def _mass(u, v, w):
+    return u * v
+
+
 def assemble_affine_components(mesh_data):
     """Assemble K1, K2, F1, F2 for piecewise constant materials and sources."""
     material_id = np.asarray(mesh_data.material_id)
@@ -133,6 +138,21 @@ def assemble_affine_components(mesh_data):
     return AffineComponents(K1, K2, F1, F2, basis, dirichlet_dofs, mesh_data, mesh_info)
 
 
+def assemble_callable_source_vector(basis, source, elements=None):
+    """Assemble a load vector for a callable source q(x, y).
+
+    The callable must accept vectorized x and y arrays from scikit-fem
+    quadrature points and return values with the same shape.
+    """
+    local_basis = basis.with_elements(elements) if elements is not None else basis
+
+    @LinearForm
+    def _source_load(v, w):
+        return source(w.x[0], w.x[1]) * v
+
+    return np.asarray(asm(_source_load, local_basis)).ravel()
+
+
 def solve_for_parameters(affine_components, kappa_1, kappa_2, q_1, q_2):
     """Solve the homogeneous-Dirichlet heat problem for one parameter set."""
     if kappa_1 <= 0.0 or kappa_2 <= 0.0:
@@ -142,18 +162,37 @@ def solve_for_parameters(affine_components, kappa_1, kappa_2, q_1, q_2):
     b = q_1 * affine_components.F1 + q_2 * affine_components.F2
     T = _solve_homogeneous_dirichlet(A, b, affine_components.dirichlet_dofs)
 
-    residual = A @ T - b
-    free = _free_dofs(A.shape[0], affine_components.dirichlet_dofs)
-    residual_norm = float(np.linalg.norm(residual[free]))
-    b_norm = float(np.linalg.norm(b[free]))
-    relative = residual_norm / max(1.0, b_norm)
-    affine_components.last_residual_norm = residual_norm
-    affine_components.last_relative_residual_norm = relative
-    if relative > 1e-8:
-        warnings.warn(f"Large free-dof residual after solve: {relative:.3e}")
+    _store_residual_info(affine_components, A, b, T)
     if T.min() < -1e-8 and q_1 >= 0.0 and q_2 >= 0.0:
         warnings.warn(f"Solution has a strongly negative minimum: {T.min():.3e}")
     return T
+
+
+def solve_for_callable_source(affine_components, kappa_1, kappa_2, source):
+    """Solve with piecewise-constant kappa and a callable volumetric source."""
+    if kappa_1 <= 0.0 or kappa_2 <= 0.0:
+        raise ValueError("Conductivities kappa_1 and kappa_2 must be positive.")
+
+    A = kappa_1 * affine_components.K1 + kappa_2 * affine_components.K2
+    b = assemble_callable_source_vector(affine_components.basis, source)
+    T = _solve_homogeneous_dirichlet(A, b, affine_components.dirichlet_dofs)
+
+    _store_residual_info(affine_components, A, b, T)
+    return T
+
+
+def l2_error(basis, numerical, exact):
+    """Compute absolute and relative L2-like errors using the P1 mass matrix."""
+    numerical = np.asarray(numerical, dtype=float)
+    exact = np.asarray(exact, dtype=float)
+    if numerical.shape != exact.shape:
+        raise ValueError("numerical and exact arrays must have the same shape.")
+    mass = csr_matrix(asm(_mass, basis))
+    error = numerical - exact
+    absolute = float(np.sqrt(max(error @ (mass @ error), 0.0)))
+    exact_norm = float(np.sqrt(max(exact @ (mass @ exact), 0.0)))
+    relative = absolute / max(exact_norm, 1e-14)
+    return absolute, relative
 
 
 def save_affine_info(affine_components, path):
@@ -179,6 +218,18 @@ def _solve_homogeneous_dirichlet(A, b, dirichlet_dofs):
     if not np.all(np.isfinite(T)):
         raise RuntimeError("Linear solve produced non-finite values.")
     return T
+
+
+def _store_residual_info(affine_components, A, b, T):
+    residual = A @ T - b
+    free = _free_dofs(A.shape[0], affine_components.dirichlet_dofs)
+    residual_norm = float(np.linalg.norm(residual[free]))
+    b_norm = float(np.linalg.norm(b[free]))
+    relative = residual_norm / max(1.0, b_norm)
+    affine_components.last_residual_norm = residual_norm
+    affine_components.last_relative_residual_norm = relative
+    if relative > 1e-8:
+        warnings.warn(f"Large free-dof residual after solve: {relative:.3e}")
 
 
 def _free_dofs(n, dirichlet_dofs):

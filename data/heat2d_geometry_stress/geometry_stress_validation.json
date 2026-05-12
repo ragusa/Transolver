@@ -1,0 +1,706 @@
+{
+  "seed": 20260512,
+  "n_geometries_requested": 36,
+  "n_geometries_passed": 36,
+  "total_rejections_before_gmsh": 0,
+  "mesh_size": 0.11,
+  "safety_margin": 0.06,
+  "plots_per_shape": 3,
+  "shape_counts": {
+    "disk": 8,
+    "square": 13,
+    "triangle": 15
+  },
+  "saved_plot_counts": {
+    "disk": 3,
+    "square": 3,
+    "triangle": 3
+  },
+  "all_cases_passed": true,
+  "results": [
+    {
+      "case_id": 0,
+      "shape": "square",
+      "center": [
+        0.2487754979657418,
+        0.6739063159434666
+      ],
+      "radius": null,
+      "side_length": 0.29098780981564143,
+      "rotation": 1.1984881427372165,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 257,
+      "n_elements": 472,
+      "material_1_elements": 382,
+      "material_2_elements": 90,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0000_square\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0000_square\\material_ids.png"
+    },
+    {
+      "case_id": 1,
+      "shape": "square",
+      "center": [
+        0.6336643555771114,
+        0.37976548670874166
+      ],
+      "radius": null,
+      "side_length": 0.30465481771374797,
+      "rotation": 2.9826305055496514,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 253,
+      "n_elements": 464,
+      "material_1_elements": 374,
+      "material_2_elements": 90,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0001_square\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0001_square\\material_ids.png"
+    },
+    {
+      "case_id": 2,
+      "shape": "triangle",
+      "center": [
+        0.2976676003151715,
+        0.3367648006068304
+      ],
+      "radius": null,
+      "side_length": 0.22550659101707102,
+      "rotation": 1.2055161753044519,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 241,
+      "n_elements": 440,
+      "material_1_elements": 415,
+      "material_2_elements": 25,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0002_triangle\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0002_triangle\\material_ids.png"
+    },
+    {
+      "case_id": 3,
+      "shape": "square",
+      "center": [
+        0.6710905964301844,
+        0.3683108343095315
+      ],
+      "radius": null,
+      "side_length": 0.30087533219633705,
+      "rotation": 0.8534557033923724,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 255,
+      "n_elements": 468,
+      "material_1_elements": 378,
+      "material_2_elements": 90,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0003_square\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0003_square\\material_ids.png"
+    },
+    {
+      "case_id": 4,
+      "shape": "triangle",
+      "center": [
+        0.7126819803085274,
+        0.5524793120170137
+      ],
+      "radius": null,
+      "side_length": 0.3583472099742105,
+      "rotation": 2.3007422680443286,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 236,
+      "n_elements": 430,
+      "material_1_elements": 381,
+      "material_2_elements": 49,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0004_triangle\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0004_triangle\\material_ids.png"
+    },
+    {
+      "case_id": 5,
+      "shape": "square",
+      "center": [
+        0.41587628581177366,
+        0.3549288033240384
+      ],
+      "radius": null,
+      "side_length": 0.21535221652548792,
+      "rotation": 1.8343696654808488,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 224,
+      "n_elements": 406,
+      "material_1_elements": 362,
+      "material_2_elements": 44,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0005_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 6,
+      "shape": "square",
+      "center": [
+        0.6290234762232356,
+        0.39737592981773795
+      ],
+      "radius": null,
+      "side_length": 0.3308123952155138,
+      "rotation": 2.4998934457857422,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 281,
+      "n_elements": 520,
+      "material_1_elements": 402,
+      "material_2_elements": 118,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0006_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 7,
+      "shape": "triangle",
+      "center": [
+        0.425723050387383,
+        0.20944700925011045
+      ],
+      "radius": null,
+      "side_length": 0.24818329001765554,
+      "rotation": 2.515866576249828,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 216,
+      "n_elements": 390,
+      "material_1_elements": 365,
+      "material_2_elements": 25,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0007_triangle\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0007_triangle\\material_ids.png"
+    },
+    {
+      "case_id": 8,
+      "shape": "triangle",
+      "center": [
+        0.6076294525750412,
+        0.3435481360630865
+      ],
+      "radius": null,
+      "side_length": 0.3643809085214602,
+      "rotation": 1.0696046440934315,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 232,
+      "n_elements": 422,
+      "material_1_elements": 373,
+      "material_2_elements": 49,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0008_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 9,
+      "shape": "triangle",
+      "center": [
+        0.4219470734323848,
+        0.6445823926693404
+      ],
+      "radius": null,
+      "side_length": 0.3571298848448786,
+      "rotation": 3.012507907932855,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 235,
+      "n_elements": 428,
+      "material_1_elements": 379,
+      "material_2_elements": 49,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0009_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 10,
+      "shape": "square",
+      "center": [
+        0.6889348854178642,
+        0.48970313654085973
+      ],
+      "radius": null,
+      "side_length": 0.18459532560931885,
+      "rotation": 0.5530343017247368,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 247,
+      "n_elements": 452,
+      "material_1_elements": 410,
+      "material_2_elements": 42,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0010_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 11,
+      "shape": "triangle",
+      "center": [
+        0.2852891702199776,
+        0.6534044133463428
+      ],
+      "radius": null,
+      "side_length": 0.24281450797356252,
+      "rotation": 1.9039983789789519,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 220,
+      "n_elements": 398,
+      "material_1_elements": 373,
+      "material_2_elements": 25,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0011_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 12,
+      "shape": "square",
+      "center": [
+        0.28295640733594607,
+        0.22589288568818328
+      ],
+      "radius": null,
+      "side_length": 0.18563009069118747,
+      "rotation": 1.2931648452890465,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 222,
+      "n_elements": 402,
+      "material_1_elements": 360,
+      "material_2_elements": 42,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0012_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 13,
+      "shape": "triangle",
+      "center": [
+        0.30477723408811114,
+        0.7173528696829957
+      ],
+      "radius": null,
+      "side_length": 0.27944302871799276,
+      "rotation": 0.08790357657845191,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 234,
+      "n_elements": 426,
+      "material_1_elements": 390,
+      "material_2_elements": 36,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0013_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 14,
+      "shape": "triangle",
+      "center": [
+        0.7403828933366083,
+        0.698756729463142
+      ],
+      "radius": null,
+      "side_length": 0.27062642985676805,
+      "rotation": 1.198600185008602,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 215,
+      "n_elements": 388,
+      "material_1_elements": 363,
+      "material_2_elements": 25,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0014_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 15,
+      "shape": "disk",
+      "center": [
+        0.5948936062268336,
+        0.6549114568158798
+      ],
+      "radius": 0.12592645403705202,
+      "side_length": null,
+      "rotation": 0.0,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 232,
+      "n_elements": 422,
+      "material_1_elements": 365,
+      "material_2_elements": 57,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0015_disk\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0015_disk\\material_ids.png"
+    },
+    {
+      "case_id": 16,
+      "shape": "disk",
+      "center": [
+        0.3897996414587437,
+        0.39425485164106006
+      ],
+      "radius": 0.2175718456343783,
+      "side_length": null,
+      "rotation": 0.0,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 253,
+      "n_elements": 464,
+      "material_1_elements": 331,
+      "material_2_elements": 133,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0016_disk\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0016_disk\\material_ids.png"
+    },
+    {
+      "case_id": 17,
+      "shape": "disk",
+      "center": [
+        0.3168804220187815,
+        0.7755796569800902
+      ],
+      "radius": 0.11542527055278043,
+      "side_length": null,
+      "rotation": 0.0,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 218,
+      "n_elements": 394,
+      "material_1_elements": 352,
+      "material_2_elements": 42,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0017_disk\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_stress\\case_0017_disk\\material_ids.png"
+    },
+    {
+      "case_id": 18,
+      "shape": "triangle",
+      "center": [
+        0.6277776679153058,
+        0.3028218193918596
+      ],
+      "radius": null,
+      "side_length": 0.20676960857201612,
+      "rotation": 3.0482538982408145,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 216,
+      "n_elements": 390,
+      "material_1_elements": 374,
+      "material_2_elements": 16,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0018_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 19,
+      "shape": "square",
+      "center": [
+        0.7608128700879542,
+        0.7760602513545153
+      ],
+      "radius": null,
+      "side_length": 0.2639309135419138,
+      "rotation": 2.864246174876161,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 225,
+      "n_elements": 408,
+      "material_1_elements": 342,
+      "material_2_elements": 66,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0019_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 20,
+      "shape": "square",
+      "center": [
+        0.20320877207445845,
+        0.23249051332359388
+      ],
+      "radius": null,
+      "side_length": 0.18210660562517791,
+      "rotation": 1.1961484650911232,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 227,
+      "n_elements": 412,
+      "material_1_elements": 370,
+      "material_2_elements": 42,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0020_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 21,
+      "shape": "square",
+      "center": [
+        0.6651739941403826,
+        0.46873436644172595
+      ],
+      "radius": null,
+      "side_length": 0.2881358242832637,
+      "rotation": 1.1943277672218262,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 266,
+      "n_elements": 490,
+      "material_1_elements": 400,
+      "material_2_elements": 90,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0021_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 22,
+      "shape": "triangle",
+      "center": [
+        0.5617824187865395,
+        0.7931411340844698
+      ],
+      "radius": null,
+      "side_length": 0.20926559445298892,
+      "rotation": 2.513257319891429,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 205,
+      "n_elements": 368,
+      "material_1_elements": 352,
+      "material_2_elements": 16,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0022_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 23,
+      "shape": "disk",
+      "center": [
+        0.6212949827896062,
+        0.5843492773368577
+      ],
+      "radius": 0.14194092799229568,
+      "side_length": null,
+      "rotation": 0.0,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 242,
+      "n_elements": 442,
+      "material_1_elements": 375,
+      "material_2_elements": 67,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0023_disk\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 24,
+      "shape": "disk",
+      "center": [
+        0.37347553436111547,
+        0.4449825281444171
+      ],
+      "radius": 0.1818256465791133,
+      "side_length": null,
+      "rotation": 0.0,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 245,
+      "n_elements": 448,
+      "material_1_elements": 353,
+      "material_2_elements": 95,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0024_disk\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 25,
+      "shape": "triangle",
+      "center": [
+        0.5640276178584178,
+        0.7083036827405892
+      ],
+      "radius": null,
+      "side_length": 0.27789234637339977,
+      "rotation": 0.5410497188580536,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 246,
+      "n_elements": 450,
+      "material_1_elements": 414,
+      "material_2_elements": 36,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0025_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 26,
+      "shape": "disk",
+      "center": [
+        0.7718643306001334,
+        0.7725237483774718
+      ],
+      "radius": 0.10638977135106077,
+      "side_length": null,
+      "rotation": 0.0,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 213,
+      "n_elements": 384,
+      "material_1_elements": 343,
+      "material_2_elements": 41,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0026_disk\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 27,
+      "shape": "disk",
+      "center": [
+        0.6955975491210391,
+        0.3593061420961427
+      ],
+      "radius": 0.2272807080407852,
+      "side_length": null,
+      "rotation": 0.0,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 255,
+      "n_elements": 468,
+      "material_1_elements": 326,
+      "material_2_elements": 142,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0027_disk\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 28,
+      "shape": "square",
+      "center": [
+        0.3904023577969285,
+        0.3645201869802054
+      ],
+      "radius": null,
+      "side_length": 0.2838153824297758,
+      "rotation": 1.9911251698606056,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 268,
+      "n_elements": 494,
+      "material_1_elements": 402,
+      "material_2_elements": 92,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0028_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 29,
+      "shape": "disk",
+      "center": [
+        0.4142653687414313,
+        0.27547804434003637
+      ],
+      "radius": 0.17850664181113785,
+      "side_length": null,
+      "rotation": 0.0,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 243,
+      "n_elements": 444,
+      "material_1_elements": 345,
+      "material_2_elements": 99,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0029_disk\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 30,
+      "shape": "square",
+      "center": [
+        0.3323936761708988,
+        0.5652227255764743
+      ],
+      "radius": null,
+      "side_length": 0.3397827309549596,
+      "rotation": 2.5638911365806316,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 275,
+      "n_elements": 508,
+      "material_1_elements": 390,
+      "material_2_elements": 118,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0030_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 31,
+      "shape": "triangle",
+      "center": [
+        0.5532535918491285,
+        0.3046170285343224
+      ],
+      "radius": null,
+      "side_length": 0.2865131419728178,
+      "rotation": 2.6479432939790217,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 235,
+      "n_elements": 428,
+      "material_1_elements": 392,
+      "material_2_elements": 36,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0031_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 32,
+      "shape": "triangle",
+      "center": [
+        0.49316855837991325,
+        0.3454178104919069
+      ],
+      "radius": null,
+      "side_length": 0.27354791695172725,
+      "rotation": 0.800039427935315,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 216,
+      "n_elements": 390,
+      "material_1_elements": 365,
+      "material_2_elements": 25,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0032_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 33,
+      "shape": "triangle",
+      "center": [
+        0.7100561379767281,
+        0.45172036249438147
+      ],
+      "radius": null,
+      "side_length": 0.379737041202747,
+      "rotation": 0.7130244653653077,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 228,
+      "n_elements": 414,
+      "material_1_elements": 365,
+      "material_2_elements": 49,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0033_triangle\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 34,
+      "shape": "square",
+      "center": [
+        0.7295859658687808,
+        0.5053781383259044
+      ],
+      "radius": null,
+      "side_length": 0.2783782052278601,
+      "rotation": 0.8225738935345938,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 264,
+      "n_elements": 486,
+      "material_1_elements": 396,
+      "material_2_elements": 90,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0034_square\\mesh.msh",
+      "plot_path": null
+    },
+    {
+      "case_id": 35,
+      "shape": "triangle",
+      "center": [
+        0.587893101141515,
+        0.6410845304857616
+      ],
+      "radius": null,
+      "side_length": 0.3170605168889026,
+      "rotation": 2.536170343671327,
+      "n_attempts": 1,
+      "n_rejections": 0,
+      "n_nodes": 230,
+      "n_elements": 418,
+      "material_1_elements": 382,
+      "material_2_elements": 36,
+      "mesh_path": "data\\heat2d_geometry_stress\\case_0035_triangle\\mesh.msh",
+      "plot_path": null
+    }
+  ]
+}

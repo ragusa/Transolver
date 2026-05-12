@@ -1,0 +1,19 @@
+{
+  "shape": "disk",
+  "outer_length": 1.0,
+  "center": [
+    0.6212949827896062,
+    0.5843492773368577
+  ],
+  "rotation": 0.0,
+  "mesh_size_background": 0.11,
+  "mesh_size_interface": 0.055,
+  "safety_margin": 0.06,
+  "physical_tags": {
+    "material_1": 1,
+    "material_2": 2,
+    "outer_boundary": 101
+  },
+  "seed": null,
+  "radius": 0.14194092799229568
+}

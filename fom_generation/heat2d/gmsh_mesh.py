@@ -23,6 +23,7 @@ def generate_two_material_square_mesh(
     mesh_size_background=0.05,
     mesh_size_inclusion=None,
     mesh_size_interface=None,
+    safety_margin=0.05,
     seed=None,
 ):
     """Generate a conforming triangular Gmsh mesh for one inclusion in a square.
@@ -43,8 +44,9 @@ def generate_two_material_square_mesh(
 
     rng = np.random.default_rng(seed)
     size = _choose_size(shape, outer_length, rng, radius, side_length)
-    center = _choose_center(shape, outer_length, rng, center, size, rotation)
-    _validate_inclusion_inside(shape, outer_length, center, size, rotation)
+    _validate_size(shape, outer_length, size)
+    center = _choose_center(shape, outer_length, rng, center, size, rotation, safety_margin)
+    _validate_inclusion_inside(shape, outer_length, center, size, rotation, safety_margin)
 
     output_msh = Path(output_msh)
     output_msh.parent.mkdir(parents=True, exist_ok=True)
@@ -94,6 +96,7 @@ def generate_two_material_square_mesh(
         "rotation": float(rotation),
         "mesh_size_background": float(mesh_size_background),
         "mesh_size_interface": float(mesh_size_interface),
+        "safety_margin": float(safety_margin),
         "physical_tags": {
             "material_1": MATERIAL_1,
             "material_2": MATERIAL_2,
@@ -113,25 +116,77 @@ def generate_two_material_square_mesh(
     return str(output_msh)
 
 
+def sample_random_inclusion_parameters(
+    shape,
+    outer_length=1.0,
+    safety_margin=0.05,
+    seed=None,
+    rng=None,
+    size_range=None,
+    max_attempts=200,
+    include_attempts=False,
+):
+    """Sample valid inclusion parameters without calling Gmsh.
+
+    The returned dictionary can be passed directly to
+    generate_two_material_square_mesh. Invalid combinations are rejected before
+    meshing so random audits do not rely on Gmsh to catch bad geometry.
+    """
+    shape = shape.lower()
+    if shape not in ["disk", "square", "triangle"]:
+        raise ValueError("shape must be one of: 'disk', 'square', 'triangle'")
+    rng = np.random.default_rng(seed) if rng is None else rng
+    size_range = _default_size_range(shape, outer_length) if size_range is None else size_range
+
+    for attempt in range(1, max_attempts + 1):
+        size = float(rng.uniform(size_range[0], size_range[1]))
+        rotation = 0.0 if shape == "disk" else _sample_non_axis_aligned_rotation(rng)
+        try:
+            _validate_size(shape, outer_length, size)
+            center = _choose_center(shape, outer_length, rng, None, size, rotation, safety_margin)
+            _validate_inclusion_inside(shape, outer_length, center, size, rotation, safety_margin)
+        except ValueError:
+            continue
+
+        params = {
+            "shape": shape,
+            "center": center,
+            "rotation": float(rotation),
+            "safety_margin": float(safety_margin),
+        }
+        if shape == "disk":
+            params["radius"] = size
+            params["side_length"] = None
+        else:
+            params["radius"] = None
+            params["side_length"] = size
+        if include_attempts:
+            params["n_attempts"] = int(attempt)
+            params["n_rejections"] = int(attempt - 1)
+        return params
+
+    raise ValueError(f"Could not sample a valid {shape} inclusion after {max_attempts} attempts.")
+
+
 def _choose_size(shape, outer_length, rng, radius, side_length):
     if shape == "disk":
         if radius is not None:
             return float(radius)
-        return float(rng.uniform(0.12, 0.25) * outer_length)
+        lo, hi = _default_size_range(shape, outer_length)
+        return float(rng.uniform(lo, hi))
     if side_length is not None:
         return float(side_length)
-    if shape == "square":
-        return float(rng.uniform(0.20, 0.35) * outer_length)
-    return float(rng.uniform(0.22, 0.42) * outer_length)
+    lo, hi = _default_size_range(shape, outer_length)
+    return float(rng.uniform(lo, hi))
 
 
-def _choose_center(shape, outer_length, rng, center, size, rotation):
+def _choose_center(shape, outer_length, rng, center, size, rotation, safety_margin):
     if center is not None:
         return (float(center[0]), float(center[1]))
     vertices = _shape_vertices(shape, (0.0, 0.0), size, rotation)
-    margin = max(max(abs(x), abs(y)) for x, y in vertices) + 0.05 * outer_length
+    margin = max(max(abs(x), abs(y)) for x, y in vertices) + safety_margin
     if shape == "disk":
-        margin = size + 0.05 * outer_length
+        margin = size + safety_margin
     if 2.0 * margin >= outer_length:
         raise ValueError("Inclusion is too large for the requested outer square.")
     return (
@@ -140,18 +195,28 @@ def _choose_center(shape, outer_length, rng, center, size, rotation):
     )
 
 
-def _validate_inclusion_inside(shape, outer_length, center, size, rotation):
+def _validate_size(shape, outer_length, size):
+    min_size = 0.03 * outer_length
+    if size <= min_size:
+        raise ValueError(f"{shape} inclusion is too small or degenerate.")
+    if size >= 0.75 * outer_length:
+        raise ValueError(f"{shape} inclusion is too large for robust meshing.")
+
+
+def _validate_inclusion_inside(shape, outer_length, center, size, rotation, safety_margin):
     tol = 1e-12
+    lower = safety_margin + tol
+    upper = outer_length - safety_margin - tol
     if shape == "disk":
         cx, cy = center
-        if cx - size <= tol or cx + size >= outer_length - tol:
-            raise ValueError("Disk inclusion must be fully inside the square.")
-        if cy - size <= tol or cy + size >= outer_length - tol:
-            raise ValueError("Disk inclusion must be fully inside the square.")
+        if cx - size <= lower or cx + size >= upper:
+            raise ValueError("Disk inclusion must stay inside the square safety margin.")
+        if cy - size <= lower or cy + size >= upper:
+            raise ValueError("Disk inclusion must stay inside the square safety margin.")
         return
     for x, y in _shape_vertices(shape, center, size, rotation):
-        if x <= tol or x >= outer_length - tol or y <= tol or y >= outer_length - tol:
-            raise ValueError(f"{shape} inclusion must be fully inside the square.")
+        if x <= lower or x >= upper or y <= lower or y >= upper:
+            raise ValueError(f"{shape} inclusion must stay inside the square safety margin.")
 
 
 def _add_inclusion(gmsh, shape, center, size, rotation):
@@ -208,7 +273,9 @@ def _add_physical_groups(gmsh, material_1_surfaces, material_2_surfaces, outer_l
     gmsh.model.setPhysicalName(2, MATERIAL_2, "material_2")
 
     outer_curves = []
-    tol = 1e-8 * max(1.0, outer_length)
+    # Gmsh's OCC bounding boxes include small CAD tolerances after boolean
+    # fragmentation, so use a geometry-scale tolerance rather than exact tests.
+    tol = 1e-6 * max(1.0, outer_length)
     for _, tag in gmsh.model.getEntities(1):
         xmin, ymin, _, xmax, ymax, _ = gmsh.model.getBoundingBox(1, tag)
         on_left = abs(xmin) < tol and abs(xmax) < tol
@@ -243,6 +310,23 @@ def _inclusion_area(shape, size):
     if shape == "square":
         return size * size
     return math.sqrt(3.0) * size * size / 4.0
+
+
+def _default_size_range(shape, outer_length):
+    if shape == "disk":
+        return (0.10 * outer_length, 0.23 * outer_length)
+    if shape == "square":
+        return (0.18 * outer_length, 0.34 * outer_length)
+    return (0.20 * outer_length, 0.38 * outer_length)
+
+
+def _sample_non_axis_aligned_rotation(rng):
+    for _ in range(100):
+        rotation = float(rng.uniform(0.0, math.pi))
+        distance_to_axis = min(abs(rotation - k * math.pi / 2.0) for k in range(3))
+        if distance_to_axis > 0.08:
+            return rotation
+    return float(math.pi / 6.0)
 
 
 def _point_in_inclusion(shape, point, center, size):

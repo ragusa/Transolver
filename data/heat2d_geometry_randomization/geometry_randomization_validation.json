@@ -1,0 +1,171 @@
+{
+  "seed": 12345,
+  "mesh_size": 0.09,
+  "safety_margin": 0.06,
+  "examples_per_shape": 3,
+  "all_cases_passed": true,
+  "results": [
+    {
+      "shape": "disk",
+      "case_id": 0,
+      "center": [
+        0.38622660285480487,
+        0.684632022111079
+      ],
+      "radius": 0.12955368292073205,
+      "side_length": null,
+      "rotation": 0.0,
+      "safety_margin": 0.06,
+      "n_nodes": 327,
+      "n_elements": 604,
+      "material_1_elements": 525,
+      "material_2_elements": 79,
+      "mesh_path": "data\\heat2d_geometry_randomization\\disk\\case_000\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\disk\\case_000\\material_ids.png"
+    },
+    {
+      "shape": "disk",
+      "case_id": 1,
+      "center": [
+        0.44510028991076234,
+        0.41570916511200684
+      ],
+      "radius": 0.18791310719762672,
+      "side_length": null,
+      "rotation": 0.0,
+      "safety_margin": 0.06,
+      "n_nodes": 354,
+      "n_elements": 658,
+      "material_1_elements": 509,
+      "material_2_elements": 149,
+      "mesh_path": "data\\heat2d_geometry_randomization\\disk\\case_001\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\disk\\case_001\\material_ids.png"
+    },
+    {
+      "shape": "disk",
+      "case_id": 2,
+      "center": [
+        0.3357109627382838,
+        0.5906001320539916
+      ],
+      "radius": 0.17778013796633468,
+      "side_length": null,
+      "rotation": 0.0,
+      "safety_margin": 0.06,
+      "n_nodes": 340,
+      "n_elements": 630,
+      "material_1_elements": 499,
+      "material_2_elements": 131,
+      "mesh_path": "data\\heat2d_geometry_randomization\\disk\\case_002\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\disk\\case_002\\material_ids.png"
+    },
+    {
+      "shape": "square",
+      "case_id": 0,
+      "center": [
+        0.6850930005737583,
+        0.5689591930430515
+      ],
+      "radius": null,
+      "side_length": 0.33068845844318995,
+      "rotation": 0.7798869133654085,
+      "safety_margin": 0.06,
+      "n_nodes": 379,
+      "n_elements": 708,
+      "material_1_elements": 546,
+      "material_2_elements": 162,
+      "mesh_path": "data\\heat2d_geometry_randomization\\square\\case_000\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\square\\case_000\\material_ids.png"
+    },
+    {
+      "shape": "square",
+      "case_id": 1,
+      "center": [
+        0.75214487072261,
+        0.6288214075600862
+      ],
+      "radius": null,
+      "side_length": 0.19534366969505793,
+      "rotation": 1.3880802492973674,
+      "safety_margin": 0.06,
+      "n_nodes": 334,
+      "n_elements": 618,
+      "material_1_elements": 552,
+      "material_2_elements": 66,
+      "mesh_path": "data\\heat2d_geometry_randomization\\square\\case_001\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\square\\case_001\\material_ids.png"
+    },
+    {
+      "shape": "square",
+      "case_id": 2,
+      "center": [
+        0.3455179273593434,
+        0.26904533316331664
+      ],
+      "radius": null,
+      "side_length": 0.23223565825121795,
+      "rotation": 2.3057033261803865,
+      "safety_margin": 0.06,
+      "n_nodes": 348,
+      "n_elements": 646,
+      "material_1_elements": 556,
+      "material_2_elements": 90,
+      "mesh_path": "data\\heat2d_geometry_randomization\\square\\case_002\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\square\\case_002\\material_ids.png"
+    },
+    {
+      "shape": "triangle",
+      "case_id": 0,
+      "center": [
+        0.47856295387126313,
+        0.356142002973458
+      ],
+      "radius": null,
+      "side_length": 0.22878120819350856,
+      "rotation": 1.068456242538232,
+      "safety_margin": 0.06,
+      "n_nodes": 329,
+      "n_elements": 608,
+      "material_1_elements": 572,
+      "material_2_elements": 36,
+      "mesh_path": "data\\heat2d_geometry_randomization\\triangle\\case_000\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\triangle\\case_000\\material_ids.png"
+    },
+    {
+      "shape": "triangle",
+      "case_id": 1,
+      "center": [
+        0.32181002995453273,
+        0.30362976201815434
+      ],
+      "radius": null,
+      "side_length": 0.34683975261646527,
+      "rotation": 0.6072522333720015,
+      "safety_margin": 0.06,
+      "n_nodes": 321,
+      "n_elements": 592,
+      "material_1_elements": 528,
+      "material_2_elements": 64,
+      "mesh_path": "data\\heat2d_geometry_randomization\\triangle\\case_001\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\triangle\\case_001\\material_ids.png"
+    },
+    {
+      "shape": "triangle",
+      "case_id": 2,
+      "center": [
+        0.5533972145764521,
+        0.7269897004765202
+      ],
+      "radius": null,
+      "side_length": 0.3077422424596844,
+      "rotation": 2.685250887496712,
+      "safety_margin": 0.06,
+      "n_nodes": 312,
+      "n_elements": 574,
+      "material_1_elements": 525,
+      "material_2_elements": 49,
+      "mesh_path": "data\\heat2d_geometry_randomization\\triangle\\case_002\\mesh.msh",
+      "plot_path": "data\\heat2d_geometry_randomization\\triangle\\case_002\\material_ids.png"
+    }
+  ]
+}
