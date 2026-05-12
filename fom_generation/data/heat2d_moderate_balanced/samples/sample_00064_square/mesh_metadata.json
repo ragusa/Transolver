@@ -1,0 +1,19 @@
+{
+  "shape": "square",
+  "outer_length": 1.0,
+  "center": [
+    0.3924641822050115,
+    0.48996813473967704
+  ],
+  "rotation": 1.836773675567539,
+  "mesh_size_background": 0.14,
+  "mesh_size_interface": 0.07,
+  "safety_margin": 0.06,
+  "physical_tags": {
+    "material_1": 1,
+    "material_2": 2,
+    "outer_boundary": 101
+  },
+  "seed": null,
+  "side_length": 0.30695210265773415
+}

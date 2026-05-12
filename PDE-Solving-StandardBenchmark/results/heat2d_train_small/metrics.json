@@ -1,0 +1,28 @@
+{
+  "train_samples": 4,
+  "test_samples": 2,
+  "final_train_loss": 0.1637871750863269,
+  "final_test_mse": 0.02568466920638457,
+  "final_test_relative_l2": 1.2443892061710358,
+  "best_test_relative_l2": 0.4037511795759201,
+  "checkpoints": {
+    "best": "results\\heat2d_train_small\\checkpoints\\best.pt",
+    "last": "results\\heat2d_train_small\\checkpoints\\last.pt"
+  },
+  "plot_dirs": [
+    "results\\heat2d_train_small\\plots\\sample_00004_square",
+    "results\\heat2d_train_small\\plots\\sample_00005_disk"
+  ],
+  "per_sample_test_metrics": [
+    {
+      "sample_name": "sample_00004_square",
+      "mse": 0.050618115812540054,
+      "relative_l2": 2.1141278743743896
+    },
+    {
+      "sample_name": "sample_00005_disk",
+      "mse": 0.0007512226002290845,
+      "relative_l2": 0.3746505379676819
+    }
+  ]
+}

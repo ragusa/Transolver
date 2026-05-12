@@ -1,0 +1,63 @@
+{
+  "output_directory": "fom_generation\\data\\heat2d_moderate_balanced",
+  "num_samples": 90,
+  "shape_counts": {
+    "disk": 30,
+    "square": 30,
+    "triangle": 30
+  },
+  "split_counts": {
+    "test": 18,
+    "train": 63,
+    "val": 9
+  },
+  "shape_counts_per_split": {
+    "test": {
+      "disk": 6,
+      "square": 6,
+      "triangle": 6
+    },
+    "train": {
+      "disk": 21,
+      "square": 21,
+      "triangle": 21
+    },
+    "val": {
+      "disk": 3,
+      "square": 3,
+      "triangle": 3
+    }
+  },
+  "node_count": {
+    "min": 130.0,
+    "mean": 157.88888888888889,
+    "max": 187.0
+  },
+  "element_count": {
+    "min": 226.0,
+    "mean": 281.77777777777777,
+    "max": 340.0
+  },
+  "parameter_ranges": {
+    "kappa_1": {
+      "min": 0.5691626071929932,
+      "mean": 2.9970648487408957,
+      "max": 4.8955078125
+    },
+    "kappa_2": {
+      "min": 0.514329195022583,
+      "mean": 10.152623229556614,
+      "max": 19.995468139648438
+    },
+    "q_1": {
+      "min": 0.0843365415930748,
+      "mean": 5.21829917025235,
+      "max": 9.985391616821289
+    },
+    "q_2": {
+      "min": 0.007609415799379349,
+      "mean": 5.068624359245102,
+      "max": 9.946629524230957
+    }
+  }
+}

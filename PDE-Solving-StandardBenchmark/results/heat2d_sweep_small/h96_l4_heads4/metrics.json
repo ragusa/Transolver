@@ -1,0 +1,111 @@
+{
+  "train_samples": 63,
+  "val_samples": 9,
+  "test_samples": 18,
+  "final_train_loss": 0.18301021301793674,
+  "best_validation_relative_l2": 0.4606615404287974,
+  "best_checkpoint_epoch": 4,
+  "test_mse_from_best_validation": 0.007535018784336798,
+  "test_relative_l2_from_best_validation": 0.46290171643098194,
+  "checkpoints": {
+    "best": "results\\heat2d_sweep_small\\h96_l4_heads4\\checkpoints\\best.pt",
+    "last": "results\\heat2d_sweep_small\\h96_l4_heads4\\checkpoints\\last.pt"
+  },
+  "plot_dirs": [
+    "results\\heat2d_sweep_small\\h96_l4_heads4\\plots\\sample_00005_square",
+    "results\\heat2d_sweep_small\\h96_l4_heads4\\plots\\sample_00014_square",
+    "results\\heat2d_sweep_small\\h96_l4_heads4\\plots\\sample_00016_triangle"
+  ],
+  "per_sample_test_metrics": [
+    {
+      "sample_name": "sample_00005_square",
+      "mse": 0.004744763020426035,
+      "relative_l2": 0.48232680559158325
+    },
+    {
+      "sample_name": "sample_00014_square",
+      "mse": 0.011537081561982632,
+      "relative_l2": 0.6135241985321045
+    },
+    {
+      "sample_name": "sample_00016_triangle",
+      "mse": 7.16780632501468e-05,
+      "relative_l2": 0.33276891708374023
+    },
+    {
+      "sample_name": "sample_00023_disk",
+      "mse": 0.0004783980257343501,
+      "relative_l2": 0.38857200741767883
+    },
+    {
+      "sample_name": "sample_00027_disk",
+      "mse": 0.00035837761242873967,
+      "relative_l2": 0.34674668312072754
+    },
+    {
+      "sample_name": "sample_00037_square",
+      "mse": 0.00011132705549243838,
+      "relative_l2": 0.35510188341140747
+    },
+    {
+      "sample_name": "sample_00053_triangle",
+      "mse": 0.00014094806101638824,
+      "relative_l2": 1.0563124418258667
+    },
+    {
+      "sample_name": "sample_00061_disk",
+      "mse": 0.0011084162397310138,
+      "relative_l2": 0.34481281042099
+    },
+    {
+      "sample_name": "sample_00064_square",
+      "mse": 0.0005811601877212524,
+      "relative_l2": 0.3472074270248413
+    },
+    {
+      "sample_name": "sample_00066_triangle",
+      "mse": 0.08292794227600098,
+      "relative_l2": 0.5333289504051208
+    },
+    {
+      "sample_name": "sample_00070_square",
+      "mse": 0.0006050041993148625,
+      "relative_l2": 0.40847116708755493
+    },
+    {
+      "sample_name": "sample_00071_triangle",
+      "mse": 0.001784396474249661,
+      "relative_l2": 0.41814735531806946
+    },
+    {
+      "sample_name": "sample_00072_disk",
+      "mse": 0.0013769136276096106,
+      "relative_l2": 0.3080800175666809
+    },
+    {
+      "sample_name": "sample_00078_disk",
+      "mse": 0.007787900976836681,
+      "relative_l2": 0.527551531791687
+    },
+    {
+      "sample_name": "sample_00082_triangle",
+      "mse": 0.0005217777797952294,
+      "relative_l2": 0.38409993052482605
+    },
+    {
+      "sample_name": "sample_00084_triangle",
+      "mse": 0.009129781275987625,
+      "relative_l2": 0.5985137224197388
+    },
+    {
+      "sample_name": "sample_00086_square",
+      "mse": 0.0011287335073575377,
+      "relative_l2": 0.37129539251327515
+    },
+    {
+      "sample_name": "sample_00088_disk",
+      "mse": 0.011235738173127174,
+      "relative_l2": 0.5153696537017822
+    }
+  ]
+}
