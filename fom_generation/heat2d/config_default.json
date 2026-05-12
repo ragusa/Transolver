@@ -1,0 +1,15 @@
+{
+  "n_geometries": 3,
+  "n_params_per_geometry": 2,
+  "seed": 12345,
+  "outer_length": 1.0,
+  "mesh_size_background": 0.05,
+  "mesh_size_interface": 0.025,
+  "allowed_shapes": ["disk", "square", "triangle"],
+  "parameter_ranges": {
+    "kappa_1": [0.5, 5.0],
+    "kappa_2": [0.5, 20.0],
+    "q_1": [0.0, 10.0],
+    "q_2": [0.0, 10.0]
+  }
+}

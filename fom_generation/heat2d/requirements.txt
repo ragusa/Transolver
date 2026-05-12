@@ -1,0 +1,7 @@
+numpy
+scipy
+gmsh
+meshio
+scikit-fem
+matplotlib
+tqdm
