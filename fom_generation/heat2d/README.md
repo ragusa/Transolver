@@ -105,6 +105,27 @@ fom_generation/data/heat2d_fom_demo/
 
 Each `.npz` sample contains coordinates, triangle connectivity, element material IDs, nodal temperature `T`, parameter names and values, geometry metadata, mesh filename, sample ID, and geometry ID.
 
+The actual generated sample schema is:
+
+```text
+coordinates            (n_nodes, 2)    node coordinates
+triangles              (n_elements, 3) triangular connectivity
+material_id            (n_elements,)   element physical material tag, 1 or 2
+T                      (n_nodes,)      nodal temperature solution
+param_names            (4,)            kappa_1, kappa_2, q_1, q_2
+param_values           (4,)            parameter values matching param_names
+geometry_metadata_json scalar string   Gmsh geometry metadata
+mesh_filename          scalar string   mesh path used for the sample
+sample_id              scalar int      parameter sample index within geometry
+geometry_id            scalar int      geometry index
+```
+
+Check and summarize either this layout or an older manifest-based Heat2D dataset with:
+
+```bash
+PYTHONPATH=$PWD python -m fom_generation.heat2d.check_dataset --dataset /path/to/dataset
+```
+
 ## Transolver-Oriented Pilot Dataset
 
 The existing Transolver examples use a few data conventions:
