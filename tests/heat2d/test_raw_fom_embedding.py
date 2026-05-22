@@ -59,6 +59,28 @@ def test_heat2d_dataset_uses_canonical_basic_builder_names(tmp_path):
     )
 
 
+def test_heat2d_dataset_basic_output_matches_legacy_embedding(tmp_path):
+    pytest.importorskip("torch")
+    from heat2d_dataset import Heat2DDataset
+
+    sample_path = _write_raw_fom_sample(tmp_path)
+    dataset = Heat2DDataset(tmp_path, split="all")
+
+    assert dataset.input_feature_names == list(BasicEmbeddingBuilder.feature_names)
+    _assert_dataset_item_matches(dataset[0], _legacy_raw_fom_item(sample_path, include_boundary_mask=False))
+
+
+def test_heat2d_dataset_boundary_output_matches_legacy_embedding(tmp_path):
+    pytest.importorskip("torch")
+    from heat2d_dataset import Heat2DDataset
+
+    sample_path = _write_raw_fom_sample(tmp_path)
+    dataset = Heat2DDataset(tmp_path, split="all", include_boundary_mask=True)
+
+    assert dataset.input_feature_names == list(BasicWithBoundaryMaskEmbeddingBuilder.feature_names)
+    _assert_dataset_item_matches(dataset[0], _legacy_raw_fom_item(sample_path, include_boundary_mask=True))
+
+
 def test_raw_sample_reader_accepts_scalar_parameter_fields(tmp_path):
     sample_path = _write_raw_fom_sample(tmp_path, scalar_parameters=True)
 
@@ -192,3 +214,7 @@ def _assert_item_matches(item, expected):
     np.testing.assert_array_equal(item["element_material_id"], expected["element_material_id"])
     np.testing.assert_array_equal(item["nodal_material_id"], expected["nodal_material_id"])
     np.testing.assert_array_equal(item["edge_index"], expected["edge_index"])
+
+
+def _assert_dataset_item_matches(item, expected):
+    _assert_item_matches({name: value.numpy() for name, value in item.items() if name in expected}, expected)

@@ -367,8 +367,10 @@ The reader should support both current raw FOM parameter formats:
 - `param_names` plus `param_values`;
 - scalar `kappa_1`, `kappa_2`, `q_1`, `q_2` fields when present.
 
-For manifest-style samples, the reader should prefer raw fields when present
-and should not require precomputed `node_features`.
+For Phase A, manifest-style samples are intentionally left on the existing
+loader path and continue to read precomputed `node_features` directly from the
+NPZ files. Unifying raw-FOM and manifest-style reading is deferred to Phase B or
+later.
 
 ### Tier 2: Derived Feature Utilities And Cache
 
@@ -449,7 +451,7 @@ and collate changes, decisions about target placement, and new plotting/metric
 logic. Element-level features should be computed and exposed as diagnostics or
 future inputs, not consumed by the current model path in this refactor.
 
-Initial builders:
+Phase A builders:
 
 #### BasicEmbeddingBuilder
 
@@ -465,9 +467,34 @@ q_2
 
 This should be the default at first to preserve existing behavior.
 
+#### BasicWithBoundaryMaskEmbeddingBuilder
+
+Preserves the current raw-FOM `--include-boundary-mask` behavior:
+
+```text
+material_2_fraction
+kappa_1
+kappa_2
+q_1
+q_2
+outer_boundary_mask
+```
+
+This is not a new experimental feature set. It is a compatibility builder for
+the existing flag.
+
+Phase B builders should be organized as a controlled 2 x 2 ablation, not as a
+linear chain of cumulative feature additions:
+
+```text
+derived physical node fields absent/present
+explicit geometric distance fields absent/present
+```
+
 #### PhysicalEmbeddingBuilder
 
-Adds direct physical node features:
+Derived physical node fields are present. Explicit geometric distance fields
+are absent:
 
 ```text
 material_2_fraction
@@ -476,30 +503,52 @@ kappa_2
 q_1
 q_2
 kappa_node_arithmetic
+kappa_node_harmonic
 q_node
 outer_boundary_mask
+```
+
+#### GeometryAwareEmbeddingBuilder
+
+Explicit geometric distance fields are present. Derived local physical fields
+such as `kappa_node_arithmetic`, `kappa_node_harmonic`, and `q_node` are absent:
+
+```text
+material_2_fraction
+kappa_1
+kappa_2
+q_1
+q_2
+outer_boundary_mask
+signed_distance_to_interface
+distance_to_outer_boundary
+```
+
+This builder is important because it diagnoses how much improvement comes from
+geometric localization alone.
+
+#### PhysicalPlusEmbeddingBuilder
+
+Derived physical node fields and explicit geometric distance fields are both
+present:
+
+```text
+material_2_fraction
+kappa_1
+kappa_2
+q_1
+q_2
+kappa_node_arithmetic
+kappa_node_harmonic
+q_node
+outer_boundary_mask
+signed_distance_to_interface
+distance_to_outer_boundary
 ```
 
 If exact preservation of the current pilot/balanced generated feature order is
 important, provide a named compatibility builder such as
 `GeneratedPilotEmbeddingBuilder` rather than hiding that behavior in the loader.
-
-#### PhysicalPlusEmbeddingBuilder
-
-Adds additional physically meaningful geometric features:
-
-```text
-material_2_fraction
-kappa_1
-kappa_2
-q_1
-q_2
-kappa_node_arithmetic
-q_node
-outer_boundary_mask
-kappa_node_harmonic
-distance_to_outer_boundary
-```
 
 ## Least-Disruptive Refactor Plan
 
@@ -527,8 +576,10 @@ Tasks:
    - `pred = model(pos, fx=fx)`
 6. Add focused tests for:
    - reading raw FOM NPZ samples;
-   - `BasicEmbeddingBuilder` output shape and feature names;
-   - current `Heat2DDataset` output compatibility.
+   - `BasicEmbeddingBuilder` and `BasicWithBoundaryMaskEmbeddingBuilder`
+     numerical equivalence to the legacy raw-FOM feature construction;
+   - current `Heat2DDataset` output compatibility for both raw-FOM variants,
+     including feature names and feature order.
 
 Default behavior should remain equivalent to the current raw FOM path:
 
@@ -538,15 +589,30 @@ Default behavior should remain equivalent to the current raw FOM path:
 
 or no flag yet, if adding the flag is deferred to Phase B.
 
-### Phase B: Multiple Feature Sets
+### Phase B: Controlled 2 x 2 Feature Ablation
 
 Add an explicit CLI option to `PDE-Solving-StandardBenchmark/exp_heat2d.py`:
 
 ```text
 --feature-set basic
+--feature-set basic_with_boundary_mask
 --feature-set physical
+--feature-set geometry_aware
 --feature-set physical_plus
 ```
+
+Phase B should be framed as a controlled 2 x 2 ablation:
+
+```text
+                         geometric distance features absent   geometric distance features present
+physical features absent BasicEmbeddingBuilder                GeometryAwareEmbeddingBuilder
+physical features present PhysicalEmbeddingBuilder             PhysicalPlusEmbeddingBuilder
+```
+
+`BasicWithBoundaryMaskEmbeddingBuilder` remains a compatibility builder for the
+existing `--include-boundary-mask` behavior. It should not be counted as the
+physical-present/geometric-present cell because the boundary mask is an existing
+loader option, not the intended interface-localization feature.
 
 Implementation tasks:
 
@@ -569,17 +635,155 @@ This preserves the current raw-FOM training path. If current experiments mainly
 use pilot/balanced manifest samples with eight precomputed features, add an
 explicit compatibility option and document it rather than making it implicit.
 
+#### Phase B Feature Sets
+
+1. `BasicEmbeddingBuilder`
+
+   No derived physical node fields. No explicit geometric distance fields.
+
+   ```text
+   material_2_fraction
+   kappa_1
+   kappa_2
+   q_1
+   q_2
+   ```
+
+2. `BasicWithBoundaryMaskEmbeddingBuilder`
+
+   Exists to preserve the current `--include-boundary-mask` behavior.
+
+   ```text
+   material_2_fraction
+   kappa_1
+   kappa_2
+   q_1
+   q_2
+   outer_boundary_mask
+   ```
+
+3. `PhysicalEmbeddingBuilder`
+
+   Derived physical node fields are present. Explicit geometric distance fields
+   are absent.
+
+   ```text
+   material_2_fraction
+   kappa_1
+   kappa_2
+   q_1
+   q_2
+   kappa_node_arithmetic
+   kappa_node_harmonic
+   q_node
+   outer_boundary_mask
+   ```
+
+4. `GeometryAwareEmbeddingBuilder`
+
+   Explicit geometric distance fields are present. Derived local physical fields
+   such as `kappa_node_arithmetic`, `kappa_node_harmonic`, and `q_node` are
+   absent.
+
+   ```text
+   material_2_fraction
+   kappa_1
+   kappa_2
+   q_1
+   q_2
+   outer_boundary_mask
+   signed_distance_to_interface
+   distance_to_outer_boundary
+   ```
+
+5. `PhysicalPlusEmbeddingBuilder`
+
+   Derived physical node fields and explicit geometric distance fields are both
+   present.
+
+   ```text
+   material_2_fraction
+   kappa_1
+   kappa_2
+   q_1
+   q_2
+   kappa_node_arithmetic
+   kappa_node_harmonic
+   q_node
+   outer_boundary_mask
+   signed_distance_to_interface
+   distance_to_outer_boundary
+   ```
+
+The purpose of this structure is experimental clarity. It separately measures
+the marginal value of derived physical features and geometric localization
+features.
+
+#### Signed Distance To Interface
+
+Node-level signed distance to the material interface is explicitly part of
+Phase B through `GeometryAwareEmbeddingBuilder` and `PhysicalPlusEmbeddingBuilder`.
+Do not defer it to an undefined later phase. Without this feature, the ablation
+cannot answer whether geometry-aware embeddings help.
+
+Use this sign convention:
+
+```text
+signed_distance_to_interface < 0 inside the inclusion / material 2
+signed_distance_to_interface = 0 on the material interface
+signed_distance_to_interface > 0 in the background / material 1
+```
+
+Normalize distances by the outer square length if useful so the feature scale is
+O(1).
+
+Before implementing signed distance, inspect `geometry_metadata_json` and verify
+which geometric parameters are stored for disk, square, and triangle inclusions.
+If the metadata are insufficient to reconstruct analytic signed distance,
+document exactly what is missing and propose the smallest generator metadata
+addition. Do not silently approximate missing signed distance values with zeros
+or placeholders.
+
+Expected analytic SDF strategies:
+
+1. Disk:
+
+   ```text
+   sdf = sqrt((x - cx)^2 + (y - cy)^2) - r
+   ```
+
+   where `(cx, cy)` is the disk center and `r` is the radius.
+
+2. Square:
+
+   Transform node coordinates into the local rotated-square frame and use the
+   standard signed-distance function for a square/rectangle.
+
+3. Triangle:
+
+   Use the signed minimum distance to the three finite triangle edge segments.
+   The distance must be to each finite line segment, not to the infinite line.
+   When projecting a node onto an edge, clamp the projection parameter to the
+   segment endpoints before computing the distance. This matters near triangle
+   corners, where the closest point may be a vertex rather than an interior point
+   of an edge. Determine the sign separately using a robust point-in-triangle
+   test.
+
 ### Phase C: Feature Ablation Slurm Commands For Vision
 
 Add Slurm commands/scripts for feature-set ablations on Vision.
 
-Recommended experiment matrix:
+Recommended controlled experiment matrix:
 
 ```text
-basic
-physical
-physical_plus
+basic            physical absent   geometric distance absent
+geometry_aware   physical absent   geometric distance present
+physical         physical present  geometric distance absent
+physical_plus    physical present  geometric distance present
 ```
+
+Run `basic_with_boundary_mask` only when comparing to historical
+`--include-boundary-mask` runs or checking compatibility with the existing flag.
 
 Keep all other training settings fixed:
 
@@ -598,6 +802,7 @@ Each run should write a distinct output directory, for example:
 
 ```text
 results/heat2d_feature_ablation/basic
+results/heat2d_feature_ablation/geometry_aware
 results/heat2d_feature_ablation/physical
 results/heat2d_feature_ablation/physical_plus
 ```
@@ -681,6 +886,8 @@ fom_generation/data/
 The current training path works, but `Heat2DDataset` and the pilot/balanced
 generators mix raw sample reading, derived feature computation, and Transolver
 embedding choices. The least disruptive path is to first introduce a raw sample
-reader and `BasicEmbeddingBuilder` that exactly preserve current behavior, then
-add named feature sets behind a `--feature-set` flag. HDF5 and persistent caches
-should wait until scaling measurements justify them.
+reader plus `BasicEmbeddingBuilder` and `BasicWithBoundaryMaskEmbeddingBuilder`
+that exactly preserve current raw-FOM behavior, then add named feature sets
+behind a `--feature-set` flag. Phase B should be a controlled 2 x 2 ablation
+that explicitly includes signed distance to the material interface. HDF5 and
+persistent caches should wait until scaling measurements justify them.
