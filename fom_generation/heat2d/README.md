@@ -12,10 +12,9 @@ pip install -r fom_generation/heat2d/requirements.txt
 
 The core packages are `numpy`, `scipy`, `gmsh`, `meshio`, `scikit-fem`, and `matplotlib`. `tqdm` is optional and only adds progress bars.
 
-Canonical command modules now live under `fom_generation.heat2d.cli` and
-`fom_generation.heat2d.validation`. The previous top-level command modules are
-temporary wrappers kept only so older `python -m` commands continue to run
-during migration.
+Canonical command modules live under `fom_generation.heat2d.cli` and
+`fom_generation.heat2d.validation`. These are the supported entry points for
+dataset generation, dataset checking, and validation commands.
 
 ## Project Layout
 
