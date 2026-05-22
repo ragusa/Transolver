@@ -172,7 +172,7 @@ python -m fom_generation.heat2d.cli.generate_pilot_dataset --n-samples 6
 Smoke-test loading:
 
 ```bash
-python -m fom_generation.heat2d.pilot_loader_smoke_test
+python -m pytest tests/heat2d -q
 ```
 
 Outputs are written under `fom_generation/data/heat2d_pilot/`. For training,
