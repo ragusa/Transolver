@@ -20,13 +20,19 @@ from model.Transolver_Irregular_Mesh import Model
 
 def build_parser():
     parser = argparse.ArgumentParser("Heat2D Transolver experiment")
-    parser.add_argument("--mode", type=str, default="overfit", choices=["overfit", "train", "eval"])
-    parser.add_argument("--data_path", type=str, default="fom_generation/data/heat2d_pilot")
+    parser.add_argument("--mode", type=str, default="overfit", choices=["smoke", "overfit", "train", "eval"])
+    parser.add_argument("--data_path", type=str, nargs="+", default=["fom_generation/data/heat2d_pilot"])
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument("--train-split", type=str, default="train")
     parser.add_argument("--val-split", type=str, default="val")
     parser.add_argument("--test-split", type=str, default="test")
     parser.add_argument("--sample-name", type=str, default=None)
+    parser.add_argument("--split-seed", type=int, default=0)
+    parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument("--max-train-samples", type=int, default=None)
+    parser.add_argument("--max-val-samples", type=int, default=None)
+    parser.add_argument("--max-test-samples", type=int, default=None)
+    parser.add_argument("--include-boundary-mask", action="store_true")
     parser.add_argument("--steps", type=int, default=500)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -35,6 +41,7 @@ def build_parser():
     parser.add_argument("--n-layers", type=int, default=3)
     parser.add_argument("--n-heads", type=int, default=4)
     parser.add_argument("--mlp_ratio", type=int, default=1)
+    parser.add_argument("--fun-dim", type=int, default=None)
     parser.add_argument("--dropout", type=float, default=0.0)
     parser.add_argument("--slice_num", type=int, default=16)
     parser.add_argument("--ref", type=int, default=8)
@@ -142,7 +149,10 @@ def save_overfit_plots(batch, pred, target, plot_dir):
     return sample_dir
 
 
-def make_model(args, device):
+def make_model(args, device, fun_dim=None):
+    fun_dim = fun_dim if fun_dim is not None else args.fun_dim
+    if fun_dim is None:
+        fun_dim = 5
     return Model(
         space_dim=2,
         n_layers=args.n_layers,
@@ -151,7 +161,7 @@ def make_model(args, device):
         n_head=args.n_heads,
         Time_Input=False,
         mlp_ratio=args.mlp_ratio,
-        fun_dim=8,
+        fun_dim=fun_dim,
         out_dim=1,
         slice_num=args.slice_num,
         ref=args.ref,
@@ -161,6 +171,17 @@ def make_model(args, device):
 
 def make_loader(dataset, shuffle=False):
     return DataLoader(dataset, batch_size=1, shuffle=shuffle, collate_fn=heat2d_batch_size_one_collate)
+
+
+def make_dataset(args, split, max_samples=None, sample_names=None):
+    return Heat2DDataset(
+        args.data_path,
+        split=split,
+        sample_names=sample_names,
+        split_seed=args.split_seed,
+        max_samples=max_samples,
+        include_boundary_mask=args.include_boundary_mask,
+    )
 
 
 def relative_l2(pred, target):
@@ -425,6 +446,33 @@ def save_learning_curves(path, train_losses, val_relative_l2):
     plt.close(fig)
 
 
+def run_smoke(args):
+    dataset = make_dataset(args, args.split, max_samples=args.max_samples)
+    all_finite = True
+    y_min = None
+    y_max = None
+    first = None
+
+    for item in dataset:
+        if first is None:
+            first = item
+        arrays = [item["pos"], item["node_features"], item["target"]]
+        all_finite = all_finite and all(bool(torch.isfinite(array).all()) for array in arrays)
+        sample_min = float(item["target"].min())
+        sample_max = float(item["target"].max())
+        y_min = sample_min if y_min is None else min(y_min, sample_min)
+        y_max = sample_max if y_max is None else max(y_max, sample_max)
+
+    print(f"number of samples: {len(dataset)}")
+    print(f"x shape: {tuple(first['pos'].shape)}")
+    print(f"fx shape: {tuple(first['node_features'].shape)}")
+    print(f"y shape: {tuple(first['target'].shape)}")
+    print(f"min/max of y: {y_min:.8e} {y_max:.8e}")
+    print(f"all arrays finite: {all_finite}")
+    print(f"input features: {dataset.input_feature_names}")
+    print("batch_size limitation: variable-size meshes currently use batch_size=1")
+
+
 def run_overfit(args):
     torch.manual_seed(args.seed)
 
@@ -432,16 +480,16 @@ def run_overfit(args):
     device = get_device(args.device)
     normalize = not args.no_normalize
 
-    stats_dataset = Heat2DDataset(args.data_path, split=args.split)
+    stats_dataset = make_dataset(args, args.split, max_samples=args.max_samples)
     sample_name = args.sample_name or stats_dataset.samples[0]["sample_name"]
-    dataset = Heat2DDataset(args.data_path, split=args.split, sample_names=[sample_name])
+    dataset = make_dataset(args, args.split, sample_names=[sample_name])
     loader = make_loader(dataset, shuffle=False)
     batch = next(iter(loader))
 
     stats = compute_stats(stats_dataset)
     pos, fx, y = normalize_batch(batch, stats, device, normalize=normalize)
 
-    model = make_model(args, device)
+    model = make_model(args, device, fun_dim=dataset.num_input_features)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     criterion = torch.nn.MSELoss()
 
@@ -495,15 +543,16 @@ def run_train(args):
     plot_dir = output_dir / "plots"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    train_dataset = Heat2DDataset(args.data_path, split=args.train_split)
-    val_dataset = Heat2DDataset(args.data_path, split=args.val_split)
-    test_dataset = Heat2DDataset(args.data_path, split=args.test_split)
+    train_dataset = make_dataset(args, args.train_split, max_samples=args.max_train_samples)
+    val_dataset = make_dataset(args, args.val_split, max_samples=args.max_val_samples)
+    test_dataset = make_dataset(args, args.test_split, max_samples=args.max_test_samples)
     train_loader = make_loader(train_dataset, shuffle=True)
     val_loader = make_loader(val_dataset, shuffle=False)
     test_loader = make_loader(test_dataset, shuffle=False)
 
     stats = compute_stats(train_dataset)
-    model = make_model(args, device)
+    args.fun_dim = train_dataset.num_input_features
+    model = make_model(args, device, fun_dim=train_dataset.num_input_features)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     criterion = torch.nn.MSELoss()
 
@@ -638,6 +687,7 @@ def run_train(args):
             "n_layers": args.n_layers,
             "n_heads": args.n_heads,
             "slice_num": args.slice_num,
+            "fun_dim": args.fun_dim,
         },
         "epochs": args.epochs,
         "best_checkpoint_epoch": int(best_checkpoint["epoch"]),
@@ -676,17 +726,23 @@ def run_eval(args):
     for key in ["n_hidden", "n_layers", "n_heads", "mlp_ratio", "dropout", "slice_num", "ref"]:
         if key in saved_args:
             setattr(args, key, saved_args[key])
+    if "include_boundary_mask" in saved_args:
+        args.include_boundary_mask = bool(saved_args["include_boundary_mask"])
+    if "split_seed" in saved_args:
+        args.split_seed = int(saved_args["split_seed"])
     normalize = not bool(saved_args.get("no_normalize", args.no_normalize))
 
     output_dir = Path(args.eval_output_dir) if args.eval_output_dir else checkpoint_path.parent.parent / "diagnostics"
     plot_dir = output_dir / "plots"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    test_dataset = Heat2DDataset(args.data_path, split=args.test_split)
+    test_dataset = make_dataset(args, args.test_split, max_samples=args.max_test_samples)
     test_loader = make_loader(test_dataset, shuffle=False)
     stats = load_stats_from_checkpoint(checkpoint)
 
-    model = make_model(args, device)
+    if args.fun_dim is None:
+        args.fun_dim = int(saved_args.get("fun_dim", test_dataset.num_input_features))
+    model = make_model(args, device, fun_dim=args.fun_dim)
     model.load_state_dict(checkpoint["model_state_dict"])
     model_eval = evaluate(model, test_loader, stats, device, normalize=normalize)
     zero_eval = evaluate(None, test_loader, stats, device, normalize=normalize, baseline="zero")
@@ -775,7 +831,9 @@ def run_eval(args):
 
 def main():
     args = build_parser().parse_args()
-    if args.mode == "overfit":
+    if args.mode == "smoke":
+        run_smoke(args)
+    elif args.mode == "overfit":
         run_overfit(args)
     elif args.mode == "train":
         run_train(args)

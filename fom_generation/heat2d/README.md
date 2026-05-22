@@ -170,10 +170,10 @@ Smoke-test loading:
 python -m fom_generation.heat2d.pilot_loader_smoke_test
 ```
 
-Outputs are written under `fom_generation/data/heat2d_pilot/`. For later
-training, variable-size meshes should be handled with batch size 1, a custom
-padding/mask collate function, PyG-style batching, approximately fixed mesh
-sizes, or resampling to a fixed query set.
+Outputs are written under `fom_generation/data/heat2d_pilot/`. For training,
+the first Transolver adapter now supports variable-size meshes with batch size
+1. See `PDE-Solving-StandardBenchmark/README_HEAT2D.md` for loader smoke-test,
+tiny training, and evaluation commands.
 
 ## Smoke Test
 
@@ -226,4 +226,4 @@ plots under `fom_generation/data/heat2d_geometry_stress/`.
 
 ## Current Limitations
 
-This first pass uses P1 triangular elements, piecewise constant material/source values, one inclusion per geometry, zero outer Dirichlet data, and `.npz` output only. Time dependence, HDF5 export, multiple inclusions, and Transolver dataset adapters are left as later extensions.
+This first pass uses P1 triangular elements, piecewise constant material/source values, one inclusion per geometry, zero outer Dirichlet data, and `.npz` output only. Time dependence, HDF5 export, multiple inclusions, and padded multi-sample Transolver batching are left as later extensions.
