@@ -18,7 +18,7 @@ Use the local Python that has the dependencies installed, for example:
 ## Generate Moderate Dataset
 
 ```powershell
-& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.generate_balanced_dataset `
+& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.cli.generate_balanced_dataset `
   --out fom_generation/data/heat2d_moderate_balanced `
   --samples-per-shape 30 `
   --seed 20260512 `
@@ -36,7 +36,7 @@ Output:
 ## Check Dataset
 
 ```powershell
-& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.check_dataset `
+& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.cli.check_dataset `
   --dataset fom_generation/data/heat2d_moderate_balanced
 ```
 

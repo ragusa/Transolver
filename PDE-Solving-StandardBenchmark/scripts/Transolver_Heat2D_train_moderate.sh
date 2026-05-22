@@ -9,7 +9,7 @@ PY="${PYTHON:-python}"
 DATASET_DIR="fom_generation/data/heat2d_moderate_balanced"
 
 if [ ! -f "$DATASET_DIR/manifest.json" ]; then
-  "$PY" -m fom_generation.heat2d.generate_balanced_dataset \
+  "$PY" -m fom_generation.heat2d.cli.generate_balanced_dataset \
     --out "$DATASET_DIR" \
     --samples-per-shape 30 \
     --seed 20260512 \
@@ -18,7 +18,7 @@ if [ ! -f "$DATASET_DIR/manifest.json" ]; then
     --plots-per-shape 1
 fi
 
-"$PY" -m fom_generation.heat2d.check_dataset \
+"$PY" -m fom_generation.heat2d.cli.check_dataset \
   --dataset "$DATASET_DIR"
 
 cd PDE-Solving-StandardBenchmark

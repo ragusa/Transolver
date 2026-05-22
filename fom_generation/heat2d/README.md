@@ -17,6 +17,58 @@ Canonical command modules now live under `fom_generation.heat2d.cli` and
 temporary wrappers kept only so older `python -m` commands continue to run
 during migration.
 
+## Project Layout
+
+Reusable package code remains directly under `fom_generation/heat2d/`:
+
+```text
+config.py
+dataset.py
+fem_solver.py
+gmsh_mesh.py
+visualize.py
+```
+
+Command-line dataset and checking drivers live under:
+
+```text
+fom_generation/heat2d/cli/
+```
+
+Validation and integration drivers live under:
+
+```text
+fom_generation/heat2d/validation/
+```
+
+Default configuration lives under:
+
+```text
+fom_generation/heat2d/configs/config_default.json
+```
+
+Lightweight pytest tests live under:
+
+```text
+tests/heat2d/
+```
+
+Generated meshes, manifests, plots, summaries, and sample `.npz` files are output content under:
+
+```text
+fom_generation/data/
+```
+
+## Tests
+
+Lightweight tests use synthetic temporary data and do not depend on existing generated datasets:
+
+```bash
+python -m pytest tests/heat2d -q
+```
+
+The mesh/solver smoke command and validation drivers remain opt-in integration checks because they require the Gmsh/FEM dependency stack and write generated outputs under `fom_generation/data/`.
+
 ## Problem
 
 The solver computes the steady equation

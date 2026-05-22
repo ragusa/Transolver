@@ -155,7 +155,7 @@ heat2d smoke test passed
 Manufactured-solution validation:
 
 ```powershell
-& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.validate_manufactured --mesh-sizes 0.12 0.06 0.03
+& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.validation.manufactured --mesh-sizes 0.12 0.06 0.03
 ```
 
 Checks:
@@ -171,7 +171,7 @@ Observed success criterion:
 Two-material geometry/material validation:
 
 ```powershell
-& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.validate_materials
+& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.validation.materials
 ```
 
 Checks:
@@ -184,7 +184,7 @@ Checks:
 Randomized geometry stress test:
 
 ```powershell
-& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.validate_geometry_stress --n-geometries 36 --seed 20260512 --mesh-size 0.11 --safety-margin 0.06 --plots-per-shape 3
+& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.validation.geometry_stress --n-geometries 36 --seed 20260512 --mesh-size 0.11 --safety-margin 0.06 --plots-per-shape 3
 ```
 
 Checks:
@@ -202,25 +202,26 @@ Geometries passed: 36
 All cases passed: True
 ```
 
-Pilot dataset loader smoke test:
+Lightweight pytest checks:
 
 ```powershell
-& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.pilot_loader_smoke_test --dataset fom_generation/data/heat2d_pilot
+& 'C:\ProgramData\anaconda3\python.exe' -m pytest tests/heat2d -q
 ```
 
 Checks:
 
-- manifest loads,
+- synthetic manifest/sample data loads,
 - required `.npz` fields exist,
 - shapes are consistent,
 - solution values are finite,
 - both materials exist in every sample,
-- disk, square, and triangle samples are present.
+- disk, square, and triangle samples are present,
+- dataset summary checks work on temporary generated samples.
 
 Expected success:
 
 ```text
-Pilot loader smoke test passed
+2 passed
 ```
 
 ## 7. Dataset Generation
@@ -228,7 +229,7 @@ Pilot loader smoke test passed
 Pilot dataset command:
 
 ```powershell
-& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.generate_pilot_dataset --out fom_generation/data/heat2d_pilot --n-samples 6 --seed 424242 --mesh-size 0.11 --safety-margin 0.06 --plots-per-shape 1
+& 'C:\ProgramData\anaconda3\python.exe' -m fom_generation.heat2d.cli.generate_pilot_dataset --out fom_generation/data/heat2d_pilot --n-samples 6 --seed 424242 --mesh-size 0.11 --safety-margin 0.06 --plots-per-shape 1
 ```
 
 Output directory:
