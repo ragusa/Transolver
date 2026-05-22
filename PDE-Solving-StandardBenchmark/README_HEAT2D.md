@@ -18,6 +18,19 @@ fx = [material_2_fraction, kappa_1, kappa_2, q_1, q_2], shape (n_nodes, 5)
 
 Add `--include-boundary-mask` to append an outer-square boundary mask as a sixth feature. The meshes can have different node counts, so this first training path intentionally supports `--batch-size 1` only.
 
+## Requirements
+
+Install the Transolver benchmark dependencies before running the Heat2D loader
+or training entry point:
+
+```bash
+cd PDE-Solving-StandardBenchmark
+pip install -r requirements.txt
+```
+
+The Heat2D Transolver path uses the irregular-mesh model, so `timm` and
+`einops` are required. They are listed in `PDE-Solving-StandardBenchmark/requirements.txt`.
+
 ## Vision Dataset Roots
 
 ```bash

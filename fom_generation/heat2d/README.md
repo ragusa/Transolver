@@ -173,7 +173,8 @@ python -m fom_generation.heat2d.pilot_loader_smoke_test
 Outputs are written under `fom_generation/data/heat2d_pilot/`. For training,
 the first Transolver adapter now supports variable-size meshes with batch size
 1. See `PDE-Solving-StandardBenchmark/README_HEAT2D.md` for loader smoke-test,
-tiny training, and evaluation commands.
+tiny training, evaluation commands, and Transolver-side requirements including
+`timm` and `einops`.
 
 ## Smoke Test
 
