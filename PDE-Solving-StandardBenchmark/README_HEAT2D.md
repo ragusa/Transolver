@@ -16,7 +16,12 @@ y  = T[:, None], shape (n_nodes, 1)
 fx = [material_2_fraction, kappa_1, kappa_2, q_1, q_2], shape (n_nodes, 5)
 ```
 
-Add `--include-boundary-mask` to append an outer-square boundary mask as a sixth feature. The meshes can have different node counts, so this first training path intentionally supports `--batch-size 1` only.
+Internally, raw-FOM samples now pass through explicit basic embedding builders.
+The default builder preserves the five-feature vector above exactly. Add
+`--include-boundary-mask` to select the boundary-mask builder, which appends an
+outer-square boundary mask as a sixth feature. The meshes can have different
+node counts, so this first training path intentionally supports `--batch-size 1`
+only.
 
 ## Requirements
 

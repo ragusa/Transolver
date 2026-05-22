@@ -6,9 +6,10 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from heat2d_embeddings import BasicEmbeddingBuilder, BasicWithBoundaryMaskEmbeddingBuilder
+from heat2d_raw_sample import Heat2DRawSample
 
-PARAMETER_NAMES = ("kappa_1", "kappa_2", "q_1", "q_2")
-BASE_FEATURE_NAMES = ("material_2_fraction",) + PARAMETER_NAMES
+BASE_FEATURE_NAMES = BasicEmbeddingBuilder.feature_names
 
 
 def resolve_heat2d_dataset_roots(dataset_dirs):
@@ -77,9 +78,12 @@ class Heat2DDataset(Dataset):
         self.include_boundary_mask = include_boundary_mask
         self.preload = preload
         self._cache = None
-        self.input_feature_names = list(BASE_FEATURE_NAMES)
-        if include_boundary_mask:
-            self.input_feature_names.append("outer_boundary_mask")
+        self.embedding_builder = (
+            BasicWithBoundaryMaskEmbeddingBuilder()
+            if include_boundary_mask
+            else BasicEmbeddingBuilder()
+        )
+        self.input_feature_names = list(self.embedding_builder.feature_names)
 
         samples = self._discover_samples()
         samples = _assign_sample_level_splits(samples, split_seed, split_fractions)
@@ -173,30 +177,17 @@ class Heat2DDataset(Dataset):
         return samples
 
     def _load_fom_sample(self, data, sample):
-        coordinates = np.asarray(data["coordinates"], dtype=np.float32)
-        triangles = np.asarray(data["triangles"], dtype=np.int64)
-        material_id = np.asarray(data["material_id"], dtype=np.int64)
-        target = np.asarray(data["T"], dtype=np.float32).reshape(-1, 1)
-        params = _sample_parameters(data)
-        material_2_fraction = _nodal_material_2_fraction(coordinates.shape[0], triangles, material_id)
-        features = [
-            material_2_fraction,
-            np.full((coordinates.shape[0], 1), params["kappa_1"], dtype=np.float32),
-            np.full((coordinates.shape[0], 1), params["kappa_2"], dtype=np.float32),
-            np.full((coordinates.shape[0], 1), params["q_1"], dtype=np.float32),
-            np.full((coordinates.shape[0], 1), params["q_2"], dtype=np.float32),
-        ]
-        if self.include_boundary_mask:
-            features.append(_outer_boundary_mask(coordinates))
-        node_features = np.concatenate(features, axis=1)
-
-        geometry_metadata_json = _string_scalar(data["geometry_metadata_json"])
-        geometry_metadata = _load_json_scalar(geometry_metadata_json)
-        shape_type = geometry_metadata.get("shape", geometry_metadata.get("shape_type", "unknown"))
-        sample_id = _int_scalar(data["sample_id"]) if "sample_id" in data.files else sample["path"].stem
-        geometry_id = _int_scalar(data["geometry_id"]) if "geometry_id" in data.files else None
-        sample_name = f"geom_{geometry_id:05d}_sample_{int(sample_id):05d}" if geometry_id is not None else sample["sample_name"]
-        edge_index = _triangle_edge_index(triangles)
+        raw_sample = Heat2DRawSample.from_npz(data, fallback_sample_id=sample["path"].stem)
+        embedding = self.embedding_builder.build(raw_sample)
+        params = raw_sample.parameters
+        shape_type = raw_sample.shape_type
+        sample_id = raw_sample.sample_id
+        geometry_id = raw_sample.geometry_id
+        sample_name = (
+            f"geom_{geometry_id:05d}_sample_{int(sample_id):05d}"
+            if geometry_id is not None
+            else sample["sample_name"]
+        )
 
         manifest_entry = {
             "split": sample["split"],
@@ -209,16 +200,16 @@ class Heat2DDataset(Dataset):
             **params,
         }
         return {
-            "pos": torch.from_numpy(coordinates),
-            "node_features": torch.from_numpy(node_features),
-            "target": torch.from_numpy(target),
-            "triangles": torch.from_numpy(triangles),
-            "element_material_id": torch.from_numpy(material_id),
-            "nodal_material_id": torch.from_numpy((material_2_fraction[:, 0] >= 0.5).astype(np.int64) + 1),
-            "edge_index": torch.from_numpy(edge_index),
+            "pos": torch.from_numpy(embedding["pos"]),
+            "node_features": torch.from_numpy(embedding["node_features"]),
+            "target": torch.from_numpy(embedding["target"]),
+            "triangles": torch.from_numpy(embedding["triangles"]),
+            "element_material_id": torch.from_numpy(embedding["element_material_id"]),
+            "nodal_material_id": torch.from_numpy(embedding["nodal_material_id"]),
+            "edge_index": torch.from_numpy(embedding["edge_index"]),
             "shape_type": str(shape_type),
             "shape_type_id": _shape_type_id(shape_type),
-            "geometry_metadata_json": geometry_metadata_json,
+            "geometry_metadata_json": raw_sample.geometry_metadata_json,
             "sample_name": sample_name,
             "sample_id": int(sample_id) if isinstance(sample_id, (int, np.integer)) else sample_id,
             "sample_path": str(sample["path"]),
@@ -334,77 +325,6 @@ def _sample_name(root, path):
         return str(path.relative_to(root)).replace("\\", "/").replace("/", "__").replace(".npz", "")
     except ValueError:
         return path.stem
-
-
-def _sample_parameters(data):
-    if "param_names" in data.files and "param_values" in data.files:
-        names = [_string_scalar(name) for name in np.asarray(data["param_names"])]
-        values = np.asarray(data["param_values"], dtype=np.float32)
-        params = {name: float(value) for name, value in zip(names, values)}
-    else:
-        params = {name: float(np.asarray(data[name]).reshape(())) for name in PARAMETER_NAMES if name in data.files}
-
-    missing = [name for name in PARAMETER_NAMES if name not in params]
-    if missing:
-        raise KeyError(f"Missing Heat2D parameter values: {missing}")
-    return params
-
-
-def _nodal_material_2_fraction(n_nodes, triangles, material_id):
-    is_material_2 = (material_id == 2).astype(np.float32)
-    sums = np.zeros(n_nodes, dtype=np.float32)
-    counts = np.zeros(n_nodes, dtype=np.float32)
-    for local_node in range(3):
-        nodes = triangles[:, local_node]
-        np.add.at(sums, nodes, is_material_2)
-        np.add.at(counts, nodes, 1.0)
-    counts = np.maximum(counts, 1.0)
-    return (sums / counts).reshape(n_nodes, 1).astype(np.float32)
-
-
-def _outer_boundary_mask(coordinates, tol=1e-6):
-    x = coordinates[:, 0]
-    y = coordinates[:, 1]
-    mask = (np.isclose(x, 0.0, atol=tol) | np.isclose(x, 1.0, atol=tol) |
-            np.isclose(y, 0.0, atol=tol) | np.isclose(y, 1.0, atol=tol))
-    return mask.astype(np.float32).reshape(-1, 1)
-
-
-def _triangle_edge_index(triangles):
-    if triangles.size == 0:
-        return np.empty((2, 0), dtype=np.int64)
-    undirected = np.concatenate(
-        [
-            triangles[:, [0, 1]],
-            triangles[:, [1, 2]],
-            triangles[:, [2, 0]],
-        ],
-        axis=0,
-    )
-    reverse = undirected[:, [1, 0]]
-    directed = np.concatenate([undirected, reverse], axis=0)
-    directed = np.unique(directed, axis=0)
-    return directed.T.astype(np.int64)
-
-
-def _load_json_scalar(value):
-    try:
-        return json.loads(value)
-    except json.JSONDecodeError:
-        return {}
-
-
-def _string_scalar(value):
-    array = np.asarray(value)
-    if array.shape == ():
-        value = array.item()
-    if isinstance(value, bytes):
-        return value.decode("utf-8")
-    return str(value)
-
-
-def _int_scalar(value):
-    return int(np.asarray(value).reshape(()))
 
 
 def _shape_type_id(shape_type):
