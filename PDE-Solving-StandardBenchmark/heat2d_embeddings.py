@@ -2,7 +2,34 @@
 
 import numpy as np
 
+from heat2d_features import (
+    distance_to_outer_boundary,
+    nodal_material_2_fraction,
+    outer_boundary_mask,
+    physical_node_features,
+    sample_outer_length,
+    signed_distance_to_interface,
+    triangle_edge_index,
+)
 
+
+FEATURE_SET_BUILDERS = {}
+
+
+def register_builder(cls):
+    FEATURE_SET_BUILDERS[cls.name] = cls
+    return cls
+
+
+def make_embedding_builder(feature_set):
+    try:
+        return FEATURE_SET_BUILDERS[feature_set]()
+    except KeyError as exc:
+        choices = ", ".join(sorted(FEATURE_SET_BUILDERS))
+        raise ValueError(f"Unknown Heat2D feature set {feature_set!r}. Choose one of: {choices}") from exc
+
+
+@register_builder
 class BasicEmbeddingBuilder:
     """Current raw-FOM node embedding without a boundary mask."""
 
@@ -42,7 +69,7 @@ class BasicEmbeddingBuilder:
 class BasicWithBoundaryMaskEmbeddingBuilder(BasicEmbeddingBuilder):
     """Current raw-FOM node embedding with the boundary mask appended."""
 
-    name = "basic_with_boundary_mask"
+    name = "basic_boundary"
     feature_names = BasicEmbeddingBuilder.feature_names + ("outer_boundary_mask",)
 
     def _node_features(self, sample, material_2_fraction):
@@ -55,42 +82,85 @@ class BasicWithBoundaryMaskEmbeddingBuilder(BasicEmbeddingBuilder):
         )
 
 
-def nodal_material_2_fraction(n_nodes, triangles, material_id):
-    is_material_2 = (material_id == 2).astype(np.float32)
-    sums = np.zeros(n_nodes, dtype=np.float32)
-    counts = np.zeros(n_nodes, dtype=np.float32)
-    for local_node in range(3):
-        nodes = triangles[:, local_node]
-        np.add.at(sums, nodes, is_material_2)
-        np.add.at(counts, nodes, 1.0)
-    counts = np.maximum(counts, 1.0)
-    return (sums / counts).reshape(n_nodes, 1).astype(np.float32)
+FEATURE_SET_BUILDERS[BasicWithBoundaryMaskEmbeddingBuilder.name] = BasicWithBoundaryMaskEmbeddingBuilder
 
 
-def outer_boundary_mask(coordinates, tol=1e-6):
-    x = coordinates[:, 0]
-    y = coordinates[:, 1]
-    mask = (
-        np.isclose(x, 0.0, atol=tol)
-        | np.isclose(x, 1.0, atol=tol)
-        | np.isclose(y, 0.0, atol=tol)
-        | np.isclose(y, 1.0, atol=tol)
+@register_builder
+class PhysicalEmbeddingBuilder(BasicEmbeddingBuilder):
+    """Raw-FOM embedding with derived local physical node fields."""
+
+    name = "physical"
+    feature_names = BasicEmbeddingBuilder.feature_names + (
+        "kappa_node_arithmetic",
+        "kappa_node_harmonic",
+        "q_node",
+        "outer_boundary_mask",
     )
-    return mask.astype(np.float32).reshape(-1, 1)
+
+    def _node_features(self, sample, material_2_fraction):
+        kappa_arithmetic, kappa_harmonic, q_node = physical_node_features(sample, material_2_fraction)
+        return np.concatenate(
+            [
+                super()._node_features(sample, material_2_fraction),
+                kappa_arithmetic,
+                kappa_harmonic,
+                q_node,
+                outer_boundary_mask(sample.coordinates, outer_length=sample_outer_length(sample)),
+            ],
+            axis=1,
+        )
 
 
-def triangle_edge_index(triangles):
-    if triangles.size == 0:
-        return np.empty((2, 0), dtype=np.int64)
-    undirected = np.concatenate(
-        [
-            triangles[:, [0, 1]],
-            triangles[:, [1, 2]],
-            triangles[:, [2, 0]],
-        ],
-        axis=0,
+@register_builder
+class GeometryAwareEmbeddingBuilder(BasicEmbeddingBuilder):
+    """Raw-FOM embedding with geometric localization fields and no derived physical fields."""
+
+    name = "geometry_aware"
+    feature_names = BasicEmbeddingBuilder.feature_names + (
+        "outer_boundary_mask",
+        "signed_distance_to_interface",
+        "distance_to_outer_boundary",
     )
-    reverse = undirected[:, [1, 0]]
-    directed = np.concatenate([undirected, reverse], axis=0)
-    directed = np.unique(directed, axis=0)
-    return directed.T.astype(np.int64)
+
+    def _node_features(self, sample, material_2_fraction):
+        outer_length = sample_outer_length(sample)
+        return np.concatenate(
+            [
+                super()._node_features(sample, material_2_fraction),
+                outer_boundary_mask(sample.coordinates, outer_length=outer_length),
+                signed_distance_to_interface(sample),
+                distance_to_outer_boundary(sample.coordinates, outer_length=outer_length),
+            ],
+            axis=1,
+        )
+
+
+@register_builder
+class PhysicalPlusEmbeddingBuilder(BasicEmbeddingBuilder):
+    """Raw-FOM embedding with physical node fields and geometric localization fields."""
+
+    name = "physical_plus"
+    feature_names = BasicEmbeddingBuilder.feature_names + (
+        "kappa_node_arithmetic",
+        "kappa_node_harmonic",
+        "q_node",
+        "outer_boundary_mask",
+        "signed_distance_to_interface",
+        "distance_to_outer_boundary",
+    )
+
+    def _node_features(self, sample, material_2_fraction):
+        outer_length = sample_outer_length(sample)
+        kappa_arithmetic, kappa_harmonic, q_node = physical_node_features(sample, material_2_fraction)
+        return np.concatenate(
+            [
+                super()._node_features(sample, material_2_fraction),
+                kappa_arithmetic,
+                kappa_harmonic,
+                q_node,
+                outer_boundary_mask(sample.coordinates, outer_length=outer_length),
+                signed_distance_to_interface(sample),
+                distance_to_outer_boundary(sample.coordinates, outer_length=outer_length),
+            ],
+            axis=1,
+        )

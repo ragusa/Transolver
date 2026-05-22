@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from heat2d_embeddings import BasicEmbeddingBuilder, BasicWithBoundaryMaskEmbeddingBuilder
+from heat2d_embeddings import BasicEmbeddingBuilder, make_embedding_builder
 from heat2d_raw_sample import Heat2DRawSample
 
 BASE_FEATURE_NAMES = BasicEmbeddingBuilder.feature_names
@@ -71,18 +71,16 @@ class Heat2DDataset(Dataset):
         split_fractions=(0.8, 0.1, 0.1),
         max_samples=None,
         include_boundary_mask=False,
+        feature_set=None,
         preload=False,
     ):
         self.dataset_roots = resolve_heat2d_dataset_roots(dataset_dir)
         self.split = split
         self.include_boundary_mask = include_boundary_mask
+        self.feature_set = _resolve_feature_set(feature_set, include_boundary_mask)
         self.preload = preload
         self._cache = None
-        self.embedding_builder = (
-            BasicWithBoundaryMaskEmbeddingBuilder()
-            if include_boundary_mask
-            else BasicEmbeddingBuilder()
-        )
+        self.embedding_builder = make_embedding_builder(self.feature_set)
         self.input_feature_names = list(self.embedding_builder.feature_names)
 
         samples = self._discover_samples()
@@ -330,3 +328,9 @@ def _sample_name(root, path):
 def _shape_type_id(shape_type):
     shape_ids = {"disk": 0, "square": 1, "triangle": 2}
     return shape_ids.get(str(shape_type), None)
+
+
+def _resolve_feature_set(feature_set, include_boundary_mask):
+    if feature_set is not None:
+        return feature_set
+    return "basic_boundary" if include_boundary_mask else "basic"

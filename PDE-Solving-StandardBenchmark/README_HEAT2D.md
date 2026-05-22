@@ -8,7 +8,7 @@ geometries/geom_*/sample_*.npz
 
 Multiple dataset roots can be passed after `--data_path`. Sample-level splits are deterministic and use 80% train, 10% validation, and 10% test across the combined discovered sample list.
 
-Each sample is loaded as:
+By default, each raw-FOM sample is loaded as:
 
 ```text
 x  = coordinates, shape (n_nodes, 2)
@@ -18,10 +18,44 @@ fx = [material_2_fraction, kappa_1, kappa_2, q_1, q_2], shape (n_nodes, 5)
 
 Internally, raw-FOM samples now pass through explicit basic embedding builders.
 The default builder preserves the five-feature vector above exactly. Add
-`--include-boundary-mask` to select the boundary-mask builder, which appends an
-outer-square boundary mask as a sixth feature. The meshes can have different
-node counts, so this first training path intentionally supports `--batch-size 1`
-only.
+`--include-boundary-mask` or `--feature-set basic_boundary` to select the
+boundary-mask builder, which appends an outer-square boundary mask as a sixth
+feature. The meshes can have different node counts, so this first training path
+intentionally supports `--batch-size 1` only.
+
+## Raw-FOM Feature Sets
+
+The `--feature-set` option applies to raw-FOM samples discovered under
+`geometries/geom_*/sample_*.npz`. Manifest-style pilot/balanced samples continue
+to read `node_features` directly from each NPZ file.
+
+```text
+basic
+  material_2_fraction, kappa_1, kappa_2, q_1, q_2
+
+basic_boundary
+  basic + outer_boundary_mask
+
+physical
+  basic + kappa_node_arithmetic, kappa_node_harmonic, q_node, outer_boundary_mask
+
+geometry_aware
+  basic + outer_boundary_mask, signed_distance_to_interface, distance_to_outer_boundary
+
+physical_plus
+  basic + kappa_node_arithmetic, kappa_node_harmonic, q_node,
+  outer_boundary_mask, signed_distance_to_interface, distance_to_outer_boundary
+```
+
+Compatibility behavior:
+
+```text
+no --feature-set and no --include-boundary-mask  -> basic
+no --feature-set and --include-boundary-mask     -> basic_boundary
+```
+
+Do not combine `--feature-set` with `--include-boundary-mask`; use
+`--feature-set basic_boundary` for the boundary-mask compatibility case.
 
 ## Requirements
 
@@ -57,7 +91,8 @@ python exp_heat2d.py \
   --mode smoke \
   --data_path "${DATA_ROOTS[@]}" \
   --split all \
-  --max-samples 5
+  --max-samples 5 \
+  --feature-set geometry_aware
 ```
 
 The command prints the number of loaded samples, representative `x`, `fx`, and `y` shapes, the min/max of `y`, and whether all loaded arrays are finite.
@@ -72,6 +107,7 @@ host-to-device copies:
 python exp_heat2d.py \
   --mode train \
   --data_path "${DATA_ROOTS[@]}" \
+  --feature-set physical_plus \
   --epochs 20 \
   --max-train-samples 2000 \
   --max-val-samples 400 \

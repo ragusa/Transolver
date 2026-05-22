@@ -15,6 +15,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from heat2d_dataset import Heat2DDataset, heat2d_batch_size_one_collate
+from heat2d_embeddings import FEATURE_SET_BUILDERS
 from model.Transolver_Irregular_Mesh import Model
 
 
@@ -33,6 +34,7 @@ def build_parser():
     parser.add_argument("--max-val-samples", type=int, default=None)
     parser.add_argument("--max-test-samples", type=int, default=None)
     parser.add_argument("--include-boundary-mask", action="store_true")
+    parser.add_argument("--feature-set", type=str, default=None, choices=sorted(FEATURE_SET_BUILDERS))
     parser.add_argument("--preload-data", action="store_true")
     parser.add_argument("--steps", type=int, default=500)
     parser.add_argument("--epochs", type=int, default=50)
@@ -200,8 +202,32 @@ def make_dataset(args, split, max_samples=None, sample_names=None):
         split_seed=args.split_seed,
         max_samples=max_samples,
         include_boundary_mask=args.include_boundary_mask,
+        feature_set=args.feature_set,
         preload=args.preload_data,
     )
+
+
+def resolve_cli_feature_set(args):
+    feature_set_was_provided = getattr(args, "_feature_set_was_provided", False)
+    if feature_set_was_provided and args.include_boundary_mask:
+        raise ValueError(
+            "--feature-set and --include-boundary-mask are ambiguous together. "
+            "Use --feature-set basic_boundary instead of combining the two flags."
+        )
+    if args.feature_set is None:
+        args.feature_set = "basic_boundary" if args.include_boundary_mask else "basic"
+    return args.feature_set
+
+
+def feature_metadata(dataset):
+    return {
+        "feature_set": dataset.feature_set,
+        "input_feature_names": list(dataset.input_feature_names),
+    }
+
+
+def args_to_jsonable(args):
+    return {key: value for key, value in vars(args).items() if not key.startswith("_")}
 
 
 def relative_l2(pred, target):
@@ -459,7 +485,7 @@ def save_checkpoint(path, model, optimizer, args, stats, epoch, train_loss, eval
         {
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
-            "args": vars(args),
+            "args": args_to_jsonable(args),
             "normalization_stats": stats,
             "epoch": epoch,
             "train_loss": train_loss,
@@ -512,6 +538,7 @@ def run_smoke(args):
     print(f"y shape: {tuple(first['target'].shape)}")
     print(f"min/max of y: {y_min:.8e} {y_max:.8e}")
     print(f"all arrays finite: {all_finite}")
+    print(f"feature_set: {dataset.feature_set}")
     print(f"input features: {dataset.input_feature_names}")
     print("batch_size limitation: variable-size meshes currently use batch_size=1")
 
@@ -566,6 +593,8 @@ def run_overfit(args):
     print(f"sample_name: {sample_name}")
     print(f"device: {device}")
     print(f"normalization: {'on' if normalize else 'off'}")
+    print(f"feature_set: {dataset.feature_set}")
+    print(f"input features: {dataset.input_feature_names}")
     print(f"initial_loss: {initial_loss:.8e}")
     print(f"final_loss: {final_loss:.8e}")
     print(f"physical_mse: {physical_mse:.8e}")
@@ -589,12 +618,15 @@ def run_train(args):
     train_dataset = make_dataset(args, args.train_split, max_samples=args.max_train_samples)
     val_dataset = make_dataset(args, args.val_split, max_samples=args.max_val_samples)
     test_dataset = make_dataset(args, args.test_split, max_samples=args.max_test_samples)
+    train_feature_metadata = feature_metadata(train_dataset)
     train_loader = make_loader(train_dataset, args, shuffle=True)
     val_loader = make_loader(val_dataset, args, shuffle=False)
     test_loader = make_loader(test_dataset, args, shuffle=False)
 
     stats = compute_stats(train_dataset)
     args.fun_dim = train_dataset.num_input_features
+    args.feature_set = train_dataset.feature_set
+    args.input_feature_names = train_feature_metadata["input_feature_names"]
     model = make_model(args, device, fun_dim=train_dataset.num_input_features)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     criterion = torch.nn.MSELoss()
@@ -602,7 +634,7 @@ def run_train(args):
     config_path = output_dir / "config.json"
     stats_path = output_dir / "normalization_stats.json"
     with config_path.open("w", encoding="utf-8") as f:
-        json.dump(vars(args), f, indent=2)
+        json.dump(args_to_jsonable(args), f, indent=2)
     with stats_path.open("w", encoding="utf-8") as f:
         json.dump(stats_to_jsonable(stats), f, indent=2)
 
@@ -620,6 +652,8 @@ def run_train(args):
     print(f"test_samples: {len(test_dataset)}")
     print(f"device: {device}")
     print(f"normalization: {'on' if normalize else 'off'}")
+    print(f"feature_set: {train_dataset.feature_set}")
+    print(f"input features: {train_dataset.input_feature_names}")
     print(
         "dataloader: "
         f"num_workers={args.num_workers} pin_memory={args.pin_memory} "
@@ -768,6 +802,7 @@ def run_train(args):
     epoch_sps_values = [row["epoch_samples_per_second"] for row in epoch_diagnostics]
 
     metrics = {
+        **train_feature_metadata,
         "train_samples": len(train_dataset),
         "val_samples": len(val_dataset),
         "test_samples": len(test_dataset),
@@ -812,6 +847,7 @@ def run_train(args):
         "run_type": "train",
         "output_dir": str(output_dir),
         "data_path": args.data_path,
+        **train_feature_metadata,
         "train_split": args.train_split,
         "val_split": args.val_split,
         "test_split": args.test_split,
@@ -871,10 +907,17 @@ def run_eval(args):
     for key in ["n_hidden", "n_layers", "n_heads", "mlp_ratio", "dropout", "slice_num", "ref"]:
         if key in saved_args:
             setattr(args, key, saved_args[key])
+    args._feature_set_was_provided = False
+    if "feature_set" in saved_args:
+        args.feature_set = saved_args["feature_set"]
+        args.include_boundary_mask = False
+    else:
+        args.feature_set = None
     if "include_boundary_mask" in saved_args:
         args.include_boundary_mask = bool(saved_args["include_boundary_mask"])
     if "split_seed" in saved_args:
         args.split_seed = int(saved_args["split_seed"])
+    resolve_cli_feature_set(args)
     normalize = not bool(saved_args.get("no_normalize", args.no_normalize))
 
     output_dir = Path(args.eval_output_dir) if args.eval_output_dir else checkpoint_path.parent.parent / "diagnostics"
@@ -882,6 +925,7 @@ def run_eval(args):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     test_dataset = make_dataset(args, args.test_split, max_samples=args.max_test_samples)
+    eval_feature_metadata = feature_metadata(test_dataset)
     test_loader = make_loader(test_dataset, args, shuffle=False)
     stats = load_stats_from_checkpoint(checkpoint)
 
@@ -910,6 +954,7 @@ def run_eval(args):
         "checkpoint_epoch": int(checkpoint.get("epoch", -1)),
         "test_split": args.test_split,
         "normalize": normalize,
+        **eval_feature_metadata,
         "model": compact_eval_summary(model_eval),
         "baselines": {
             "zero_prediction": compact_eval_summary(zero_eval)["overall"],
@@ -926,6 +971,7 @@ def run_eval(args):
         "checkpoint": str(checkpoint_path),
         "checkpoint_epoch": diagnostics["checkpoint_epoch"],
         "test_split": args.test_split,
+        **eval_feature_metadata,
         "test_samples": len(test_dataset),
         "overall_mse": diagnostics["model"]["overall"]["mean_sample_mse"],
         "overall_relative_l2": diagnostics["model"]["overall"]["mean_sample_relative_l2"],
@@ -955,6 +1001,8 @@ def run_eval(args):
     print(f"checkpoint: {checkpoint_path}")
     print(f"checkpoint_epoch: {diagnostics['checkpoint_epoch']}")
     print(f"test_samples: {len(test_dataset)}")
+    print(f"feature_set: {test_dataset.feature_set}")
+    print(f"input features: {test_dataset.input_feature_names}")
     print(f"overall_mse: {overall['mean_sample_mse']:.8e}")
     print(f"overall_relative_l2: {overall['mean_sample_relative_l2']:.8e}")
     print(f"global_nodal_mse: {overall['global_nodal_mse']:.8e}")
@@ -985,6 +1033,9 @@ def run_eval(args):
 
 def main():
     args = build_parser().parse_args()
+    args._feature_set_was_provided = args.feature_set is not None
+    if args.mode != "eval":
+        resolve_cli_feature_set(args)
     if args.mode == "smoke":
         run_smoke(args)
     elif args.mode == "overfit":
