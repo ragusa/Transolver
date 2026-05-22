@@ -34,6 +34,10 @@ def load_config(path=None):
         return cfg
 
     path = Path(path)
+    if not path.exists() and path.name == "config_default.json":
+        packaged_default = Path(__file__).with_name("configs") / "config_default.json"
+        if packaged_default.exists():
+            path = packaged_default
     with path.open("r", encoding="utf-8") as f:
         if path.suffix.lower() in [".yaml", ".yml"]:
             try:

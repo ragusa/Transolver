@@ -12,6 +12,11 @@ pip install -r fom_generation/heat2d/requirements.txt
 
 The core packages are `numpy`, `scipy`, `gmsh`, `meshio`, `scikit-fem`, and `matplotlib`. `tqdm` is optional and only adds progress bars.
 
+Canonical command modules now live under `fom_generation.heat2d.cli` and
+`fom_generation.heat2d.validation`. The previous top-level command modules are
+temporary wrappers kept only so older `python -m` commands continue to run
+during migration.
+
 ## Problem
 
 The solver computes the steady equation
@@ -71,7 +76,7 @@ q(x, y) = 2 kappa pi^2 sin(pi x) sin(pi y)
 Run:
 
 ```bash
-python -m fom_generation.heat2d.validate_manufactured --mesh-sizes 0.12 0.06
+python -m fom_generation.heat2d.validation.manufactured --mesh-sizes 0.12 0.06
 ```
 
 The command writes `fom_generation/data/heat2d_validation/manufactured_validation.json` and
@@ -80,8 +85,8 @@ prints the L2-like relative error for each mesh.
 ## Generate a Tiny Dataset
 
 ```bash
-python -m fom_generation.heat2d.generate_dataset \
-  --config fom_generation/heat2d/config_default.json \
+python -m fom_generation.heat2d.cli.generate_dataset \
+  --config fom_generation/heat2d/configs/config_default.json \
   --out fom_generation/data/heat2d_fom_demo \
   --n-geometries 1 \
   --n-params-per-geometry 1 \
@@ -123,7 +128,7 @@ geometry_id            scalar int      geometry index
 Check and summarize either this layout or an older manifest-based Heat2D dataset with:
 
 ```bash
-PYTHONPATH=$PWD python -m fom_generation.heat2d.check_dataset --dataset /path/to/dataset
+PYTHONPATH=$PWD python -m fom_generation.heat2d.cli.check_dataset --dataset /path/to/dataset
 ```
 
 ## Transolver-Oriented Pilot Dataset
@@ -161,7 +166,7 @@ pde_sign_convention    scalar string   -div(kappa grad T)=q
 Generate the small pilot:
 
 ```bash
-python -m fom_generation.heat2d.generate_pilot_dataset --n-samples 6
+python -m fom_generation.heat2d.cli.generate_pilot_dataset --n-samples 6
 ```
 
 Smoke-test loading:
@@ -191,7 +196,7 @@ The smoke test generates disk, square, and triangle inclusions, assembles affine
 Run:
 
 ```bash
-python -m fom_generation.heat2d.validate_materials
+python -m fom_generation.heat2d.validation.materials
 ```
 
 This generates one disk, square, and triangle inclusion, verifies that material
@@ -204,7 +209,7 @@ shape under `fom_generation/data/heat2d_material_validation/`.
 Run:
 
 ```bash
-python -m fom_generation.heat2d.validate_geometry_randomization
+python -m fom_generation.heat2d.validation.geometry_randomization
 ```
 
 This generates a few reproducible randomized disk, rotated square, and rotated
@@ -217,7 +222,7 @@ and writes cellwise material-ID plots under
 Run:
 
 ```bash
-python -m fom_generation.heat2d.validate_geometry_stress --n-geometries 36
+python -m fom_generation.heat2d.validation.geometry_stress --n-geometries 36
 ```
 
 This generates many randomized two-material geometries without solving the PDE,

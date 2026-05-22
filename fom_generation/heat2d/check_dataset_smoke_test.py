@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 
-from .check_dataset import check_dataset
+from .cli.check_dataset import check_dataset
 
 
 def run_smoke_test():
