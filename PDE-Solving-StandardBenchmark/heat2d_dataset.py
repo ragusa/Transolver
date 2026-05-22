@@ -70,10 +70,13 @@ class Heat2DDataset(Dataset):
         split_fractions=(0.8, 0.1, 0.1),
         max_samples=None,
         include_boundary_mask=False,
+        preload=False,
     ):
         self.dataset_roots = resolve_heat2d_dataset_roots(dataset_dir)
         self.split = split
         self.include_boundary_mask = include_boundary_mask
+        self.preload = preload
+        self._cache = None
         self.input_feature_names = list(BASE_FEATURE_NAMES)
         if include_boundary_mask:
             self.input_feature_names.append("outer_boundary_mask")
@@ -96,6 +99,8 @@ class Heat2DDataset(Dataset):
         self.samples = samples
         if samples[0]["schema"] == "manifest":
             self.input_feature_names = list(samples[0].get("input_feature_names", self.input_feature_names))
+        if self.preload:
+            self._cache = [self._load_item(index) for index in range(len(self.samples))]
 
     @property
     def num_input_features(self):
@@ -105,6 +110,11 @@ class Heat2DDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
+        if self._cache is not None:
+            return self._cache[idx]
+        return self._load_item(idx)
+
+    def _load_item(self, idx):
         sample = self.samples[idx]
         sample_path = sample["path"]
         with np.load(sample_path, allow_pickle=False) as data:

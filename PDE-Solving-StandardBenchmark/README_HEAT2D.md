@@ -57,6 +57,54 @@ python exp_heat2d.py \
 
 The command prints the number of loaded samples, representative `x`, `fx`, and `y` shapes, the min/max of `y`, and whether all loaded arrays are finite.
 
+## Performance Knobs
+
+The working path still defaults to `--batch-size 1` because meshes have
+different node counts. For medium runs on Vision, try overlapping disk I/O and
+host-to-device copies:
+
+```bash
+python exp_heat2d.py \
+  --mode train \
+  --data_path "${DATA_ROOTS[@]}" \
+  --epochs 20 \
+  --max-train-samples 2000 \
+  --max-val-samples 400 \
+  --max-test-samples 400 \
+  --num-workers 4 \
+  --pin-memory \
+  --persistent-workers \
+  --batch-size 1 \
+  --output-dir results/heat2d_fom_medium
+```
+
+For medium-size runs where the selected samples fit comfortably in CPU memory,
+add `--preload-data` to read and featurize NPZ samples once at dataset
+construction time:
+
+```bash
+python exp_heat2d.py \
+  --mode train \
+  --data_path "${DATA_ROOTS[@]}" \
+  --epochs 20 \
+  --max-train-samples 2000 \
+  --max-val-samples 400 \
+  --max-test-samples 400 \
+  --preload-data \
+  --pin-memory \
+  --batch-size 1 \
+  --output-dir results/heat2d_fom_medium_cached
+```
+
+If `--preload-data` is combined with `--num-workers > 0`, each worker process
+can hold its own copy of the cached dataset. Use this only when the memory
+budget is clearly safe.
+
+Training now prints `train_seconds`, `train_samples_per_second`,
+`epoch_seconds`, and `epoch_samples_per_second` each epoch. The same values are
+saved in `learning_curves.json`, `metrics.json`, `run_summary.json`, and
+`epoch_metrics.csv`.
+
 ## Tiny Training Check
 
 ```bash
@@ -75,6 +123,24 @@ python exp_heat2d.py \
   --batch-size 1 \
   --output-dir results/heat2d_fom_tiny
 ```
+
+## Batching Notes
+
+Two simple batching paths are plausible next, but are intentionally not enabled
+in this first performance pass:
+
+1. Padding: pad `x`, `fx`, and `y` to the largest node count in each batch and
+   carry a node mask. This needs masked loss immediately, and may also need
+   masked attention or careful output filtering so padded nodes do not affect
+   physics attention.
+2. Same-size grouping: group by `geometry_id` or exact `n_nodes`, then batch
+   samples from the same geometry/node count. This avoids padding and is a good
+   fit for Heat2D because each geometry has multiple parameter samples on the
+   same mesh.
+
+The current recommendation is to benchmark `--num-workers`, `--pin-memory`,
+and `--preload-data` first, then implement same-geometry batching before padded
+masked batching.
 
 ## Evaluation
 

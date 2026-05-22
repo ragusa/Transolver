@@ -33,6 +33,7 @@ def build_parser():
     parser.add_argument("--max-val-samples", type=int, default=None)
     parser.add_argument("--max-test-samples", type=int, default=None)
     parser.add_argument("--include-boundary-mask", action="store_true")
+    parser.add_argument("--preload-data", action="store_true")
     parser.add_argument("--steps", type=int, default=500)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -48,6 +49,9 @@ def build_parser():
     parser.add_argument("--no-normalize", action="store_true")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--pin-memory", action="store_true")
+    parser.add_argument("--persistent-workers", action="store_true")
     parser.add_argument("--grad-accum-steps", type=int, default=1)
     parser.add_argument("--output-dir", type=str, default="results/heat2d_train_small")
     parser.add_argument("--plot-dir", type=str, default="results/heat2d_overfit")
@@ -66,6 +70,11 @@ def get_device(name):
     if name == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("Requested --device cuda, but CUDA is not available.")
     return torch.device(name)
+
+
+def synchronize_if_cuda(device):
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
 
 
 def compute_stats(dataset):
@@ -93,10 +102,10 @@ def stats_to_jsonable(stats):
     return {key: value.detach().cpu().tolist() for key, value in stats.items()}
 
 
-def normalize_batch(batch, stats, device, normalize=True):
-    pos = batch["pos"].to(device)
-    fx = batch["node_features"].to(device)
-    y = batch["target"].to(device)
+def normalize_batch(batch, stats, device, normalize=True, non_blocking=False):
+    pos = batch["pos"].to(device, non_blocking=non_blocking)
+    fx = batch["node_features"].to(device, non_blocking=non_blocking)
+    y = batch["target"].to(device, non_blocking=non_blocking)
 
     if not normalize:
         return pos, fx, y
@@ -169,8 +178,18 @@ def make_model(args, device, fun_dim=None):
     ).to(device)
 
 
-def make_loader(dataset, shuffle=False):
-    return DataLoader(dataset, batch_size=1, shuffle=shuffle, collate_fn=heat2d_batch_size_one_collate)
+def make_loader(dataset, args, shuffle=False):
+    if args.persistent_workers and args.num_workers < 1:
+        raise ValueError("--persistent-workers requires --num-workers > 0.")
+    return DataLoader(
+        dataset,
+        batch_size=1,
+        shuffle=shuffle,
+        collate_fn=heat2d_batch_size_one_collate,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+        persistent_workers=args.persistent_workers and args.num_workers > 0,
+    )
 
 
 def make_dataset(args, split, max_samples=None, sample_names=None):
@@ -181,6 +200,7 @@ def make_dataset(args, split, max_samples=None, sample_names=None):
         split_seed=args.split_seed,
         max_samples=max_samples,
         include_boundary_mask=args.include_boundary_mask,
+        preload=args.preload_data,
     )
 
 
@@ -230,7 +250,7 @@ def summarize_rows(rows, prefix=""):
     }
 
 
-def evaluate(model, loader, stats, device, normalize=True, baseline=None):
+def evaluate(model, loader, stats, device, normalize=True, baseline=None, non_blocking=False):
     criterion = torch.nn.MSELoss()
     if model is not None:
         model.eval()
@@ -245,7 +265,7 @@ def evaluate(model, loader, stats, device, normalize=True, baseline=None):
     area_total = 0.0
     with torch.no_grad():
         for batch in loader:
-            pos, fx, y = normalize_batch(batch, stats, device, normalize=normalize)
+            pos, fx, y = normalize_batch(batch, stats, device, normalize=normalize, non_blocking=non_blocking)
             if baseline == "zero":
                 pred_physical = torch.zeros_like(decode_target(y, stats, normalize=normalize))
             elif baseline == "train_mean":
@@ -374,6 +394,29 @@ def write_single_row_csv(path, row):
         writer.writerow(row)
 
 
+def write_epoch_metrics_csv(path, rows):
+    if not rows:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = [
+        "epoch",
+        "train_loss",
+        "train_seconds",
+        "train_samples_per_second",
+        "eval_seconds",
+        "epoch_seconds",
+        "epoch_samples_per_second",
+        "val_mse",
+        "val_relative_l2",
+        "best_validation_relative_l2",
+    ]
+    with path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({name: row.get(name) for name in fieldnames})
+
+
 def compact_eval_summary(eval_result):
     rows = eval_result["samples"]
     best = min(rows, key=lambda row: row["relative_l2"]) if rows else None
@@ -483,7 +526,7 @@ def run_overfit(args):
     stats_dataset = make_dataset(args, args.split, max_samples=args.max_samples)
     sample_name = args.sample_name or stats_dataset.samples[0]["sample_name"]
     dataset = make_dataset(args, args.split, sample_names=[sample_name])
-    loader = make_loader(dataset, shuffle=False)
+    loader = make_loader(dataset, args, shuffle=False)
     batch = next(iter(loader))
 
     stats = compute_stats(stats_dataset)
@@ -546,9 +589,9 @@ def run_train(args):
     train_dataset = make_dataset(args, args.train_split, max_samples=args.max_train_samples)
     val_dataset = make_dataset(args, args.val_split, max_samples=args.max_val_samples)
     test_dataset = make_dataset(args, args.test_split, max_samples=args.max_test_samples)
-    train_loader = make_loader(train_dataset, shuffle=True)
-    val_loader = make_loader(val_dataset, shuffle=False)
-    test_loader = make_loader(test_dataset, shuffle=False)
+    train_loader = make_loader(train_dataset, args, shuffle=True)
+    val_loader = make_loader(val_dataset, args, shuffle=False)
+    test_loader = make_loader(test_dataset, args, shuffle=False)
 
     stats = compute_stats(train_dataset)
     args.fun_dim = train_dataset.num_input_features
@@ -568,6 +611,8 @@ def run_train(args):
     final_val_eval = None
     train_losses = []
     val_relative_l2 = []
+    epoch_diagnostics = []
+    non_blocking = bool(args.pin_memory and device.type == "cuda")
     optimizer.zero_grad()
 
     print(f"train_samples: {len(train_dataset)}")
@@ -575,13 +620,22 @@ def run_train(args):
     print(f"test_samples: {len(test_dataset)}")
     print(f"device: {device}")
     print(f"normalization: {'on' if normalize else 'off'}")
+    print(
+        "dataloader: "
+        f"num_workers={args.num_workers} pin_memory={args.pin_memory} "
+        f"persistent_workers={args.persistent_workers and args.num_workers > 0} "
+        f"preload_data={args.preload_data}"
+    )
 
     for epoch in range(1, args.epochs + 1):
+        synchronize_if_cuda(device)
+        epoch_start = time.perf_counter()
+        train_start = epoch_start
         model.train()
         train_loss_total = 0.0
         optimizer.zero_grad()
         for step, batch in enumerate(train_loader, start=1):
-            pos, fx, y = normalize_batch(batch, stats, device, normalize=normalize)
+            pos, fx, y = normalize_batch(batch, stats, device, normalize=normalize, non_blocking=non_blocking)
             pred = model(pos, fx=fx)
             loss = criterion(pred, y)
             (loss / args.grad_accum_steps).backward()
@@ -591,12 +645,29 @@ def run_train(args):
                 optimizer.step()
                 optimizer.zero_grad()
 
+        synchronize_if_cuda(device)
+        train_seconds = time.perf_counter() - train_start
+        train_samples_per_second = len(train_dataset) / max(train_seconds, 1e-12)
         final_train_loss = train_loss_total / len(train_loader)
         train_losses.append(final_train_loss)
 
+        eval_seconds = None
+        val_mse = None
+        val_rel_l2_score = None
         should_eval = epoch == args.epochs or args.eval_every > 0 and epoch % args.eval_every == 0
         if should_eval:
-            final_val_eval = evaluate(model, val_loader, stats, device, normalize=normalize)
+            synchronize_if_cuda(device)
+            eval_start = time.perf_counter()
+            final_val_eval = evaluate(
+                model,
+                val_loader,
+                stats,
+                device,
+                normalize=normalize,
+                non_blocking=non_blocking,
+            )
+            synchronize_if_cuda(device)
+            eval_seconds = time.perf_counter() - eval_start
             val_rel_l2_score = final_val_eval["relative_l2"]
             val_mse = final_val_eval["mse"]
             val_relative_l2.append(val_rel_l2_score)
@@ -610,17 +681,46 @@ def run_train(args):
                     stats,
                     epoch,
                     final_train_loss,
-                    {"split": args.val_split, "mse": val_mse, "relative_l2": val_rel_l2_score},
+                    {
+                        "split": args.val_split,
+                        "mse": val_mse,
+                        "relative_l2": val_rel_l2_score,
+                        "train_seconds": train_seconds,
+                        "train_samples_per_second": train_samples_per_second,
+                        "eval_seconds": eval_seconds,
+                    },
                     best_val_rel_l2,
                 )
-            print(
-                f"epoch {epoch:04d} train_loss {final_train_loss:.8e} "
-                f"val_mse {val_mse:.8e} val_relative_l2 {val_rel_l2_score:.8e} "
-                f"best_val_relative_l2 {best_val_rel_l2:.8e}"
-            )
         else:
             val_relative_l2.append(None)
-            print(f"epoch {epoch:04d} train_loss {final_train_loss:.8e}")
+        synchronize_if_cuda(device)
+        epoch_seconds = time.perf_counter() - epoch_start
+        epoch_samples_per_second = len(train_dataset) / max(epoch_seconds, 1e-12)
+        epoch_row = {
+            "epoch": epoch,
+            "train_loss": final_train_loss,
+            "train_seconds": train_seconds,
+            "train_samples_per_second": train_samples_per_second,
+            "eval_seconds": eval_seconds,
+            "epoch_seconds": epoch_seconds,
+            "epoch_samples_per_second": epoch_samples_per_second,
+            "val_mse": val_mse,
+            "val_relative_l2": val_rel_l2_score,
+            "best_validation_relative_l2": best_val_rel_l2,
+        }
+        epoch_diagnostics.append(epoch_row)
+        message = (
+            f"epoch {epoch:04d} train_loss {final_train_loss:.8e} "
+            f"train_seconds {train_seconds:.2f} train_samples_per_second {train_samples_per_second:.2f} "
+            f"epoch_seconds {epoch_seconds:.2f} epoch_samples_per_second {epoch_samples_per_second:.2f}"
+        )
+        if should_eval:
+            message += (
+                f" eval_seconds {eval_seconds:.2f} val_mse {val_mse:.8e} "
+                f"val_relative_l2 {val_rel_l2_score:.8e} "
+                f"best_val_relative_l2 {best_val_rel_l2:.8e}"
+            )
+        print(message)
 
     save_checkpoint(
         checkpoint_dir / "last.pt",
@@ -630,22 +730,42 @@ def run_train(args):
         stats,
         args.epochs,
         final_train_loss,
-        {"split": args.val_split, "mse": final_val_eval["mse"], "relative_l2": final_val_eval["relative_l2"]},
+        {
+            "split": args.val_split,
+            "mse": final_val_eval["mse"],
+            "relative_l2": final_val_eval["relative_l2"],
+            "train_seconds": epoch_diagnostics[-1]["train_seconds"],
+            "train_samples_per_second": epoch_diagnostics[-1]["train_samples_per_second"],
+            "eval_seconds": epoch_diagnostics[-1]["eval_seconds"],
+            "epoch_seconds": epoch_diagnostics[-1]["epoch_seconds"],
+            "epoch_samples_per_second": epoch_diagnostics[-1]["epoch_samples_per_second"],
+        },
         best_val_rel_l2,
     )
 
     best_path = checkpoint_dir / "best.pt"
     best_checkpoint = torch.load(best_path, map_location=device, weights_only=False)
     model.load_state_dict(best_checkpoint["model_state_dict"])
-    test_eval = evaluate(model, test_loader, stats, device, normalize=normalize)
+    synchronize_if_cuda(device)
+    test_eval_start = time.perf_counter()
+    test_eval = evaluate(model, test_loader, stats, device, normalize=normalize, non_blocking=non_blocking)
+    synchronize_if_cuda(device)
+    test_eval_seconds = time.perf_counter() - test_eval_start
     saved_plot_dirs = save_diagnostic_plots(test_eval, plot_dir, args.plot_samples)
     learning_curves = {
         "train_loss": train_losses,
         "val_relative_l2": val_relative_l2,
+        "epoch_diagnostics": epoch_diagnostics,
     }
     with (output_dir / "learning_curves.json").open("w", encoding="utf-8") as f:
         json.dump(learning_curves, f, indent=2)
     save_learning_curves(output_dir / "learning_curves.png", train_losses, val_relative_l2)
+    write_epoch_metrics_csv(output_dir / "epoch_metrics.csv", epoch_diagnostics)
+
+    train_seconds_values = [row["train_seconds"] for row in epoch_diagnostics]
+    train_sps_values = [row["train_samples_per_second"] for row in epoch_diagnostics]
+    epoch_seconds_values = [row["epoch_seconds"] for row in epoch_diagnostics]
+    epoch_sps_values = [row["epoch_samples_per_second"] for row in epoch_diagnostics]
 
     metrics = {
         "train_samples": len(train_dataset),
@@ -656,6 +776,22 @@ def run_train(args):
         "best_checkpoint_epoch": int(best_checkpoint["epoch"]),
         "test_mse_from_best_validation": test_eval["mse"],
         "test_relative_l2_from_best_validation": test_eval["relative_l2"],
+        "test_eval_seconds": test_eval_seconds,
+        "timing": {
+            "epoch_diagnostics": epoch_diagnostics,
+            "mean_train_seconds": float(sum(train_seconds_values) / len(train_seconds_values)),
+            "mean_train_samples_per_second": float(sum(train_sps_values) / len(train_sps_values)),
+            "mean_epoch_seconds": float(sum(epoch_seconds_values) / len(epoch_seconds_values)),
+            "mean_epoch_samples_per_second": float(sum(epoch_sps_values) / len(epoch_sps_values)),
+            "test_eval_seconds": test_eval_seconds,
+        },
+        "dataloader": {
+            "batch_size": args.batch_size,
+            "num_workers": args.num_workers,
+            "pin_memory": args.pin_memory,
+            "persistent_workers": args.persistent_workers and args.num_workers > 0,
+            "preload_data": args.preload_data,
+        },
         "checkpoints": {
             "best": str(checkpoint_dir / "best.pt"),
             "last": str(checkpoint_dir / "last.pt"),
@@ -695,9 +831,15 @@ def run_train(args):
         "best_validation_relative_l2": best_val_rel_l2,
         "test_mse_from_best_validation": test_eval["mse"],
         "test_relative_l2_from_best_validation": test_eval["relative_l2"],
+        "mean_train_seconds": float(sum(train_seconds_values) / len(train_seconds_values)),
+        "mean_train_samples_per_second": float(sum(train_sps_values) / len(train_sps_values)),
+        "mean_epoch_seconds": float(sum(epoch_seconds_values) / len(epoch_seconds_values)),
+        "mean_epoch_samples_per_second": float(sum(epoch_sps_values) / len(epoch_sps_values)),
+        "test_eval_seconds": test_eval_seconds,
         "best_checkpoint": str(checkpoint_dir / "best.pt"),
         "last_checkpoint": str(checkpoint_dir / "last.pt"),
         "plots": str(plot_dir),
+        "epoch_metrics": str(output_dir / "epoch_metrics.csv"),
     }
     with (output_dir / "run_summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
@@ -709,6 +851,9 @@ def run_train(args):
     print(f"best_validation_relative_l2: {best_val_rel_l2:.8e}")
     print(f"test_mse_from_best_validation: {test_eval['mse']:.8e}")
     print(f"test_relative_l2_from_best_validation: {test_eval['relative_l2']:.8e}")
+    print(f"mean_train_samples_per_second: {sum(train_sps_values) / len(train_sps_values):.2f}")
+    print(f"mean_epoch_samples_per_second: {sum(epoch_sps_values) / len(epoch_sps_values):.2f}")
+    print(f"test_eval_seconds: {test_eval_seconds:.2f}")
     print(f"checkpoint_dir: {checkpoint_dir}")
     print(f"plot_dir: {plot_dir}")
     print(f"metrics: {output_dir / 'metrics.json'}")
@@ -737,16 +882,25 @@ def run_eval(args):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     test_dataset = make_dataset(args, args.test_split, max_samples=args.max_test_samples)
-    test_loader = make_loader(test_dataset, shuffle=False)
+    test_loader = make_loader(test_dataset, args, shuffle=False)
     stats = load_stats_from_checkpoint(checkpoint)
 
     if args.fun_dim is None:
         args.fun_dim = int(saved_args.get("fun_dim", test_dataset.num_input_features))
     model = make_model(args, device, fun_dim=args.fun_dim)
     model.load_state_dict(checkpoint["model_state_dict"])
-    model_eval = evaluate(model, test_loader, stats, device, normalize=normalize)
-    zero_eval = evaluate(None, test_loader, stats, device, normalize=normalize, baseline="zero")
-    mean_eval = evaluate(None, test_loader, stats, device, normalize=normalize, baseline="train_mean")
+    non_blocking = bool(args.pin_memory and device.type == "cuda")
+    model_eval = evaluate(model, test_loader, stats, device, normalize=normalize, non_blocking=non_blocking)
+    zero_eval = evaluate(None, test_loader, stats, device, normalize=normalize, baseline="zero", non_blocking=non_blocking)
+    mean_eval = evaluate(
+        None,
+        test_loader,
+        stats,
+        device,
+        normalize=normalize,
+        baseline="train_mean",
+        non_blocking=non_blocking,
+    )
 
     saved_plot_dirs = save_diagnostic_plots(model_eval, plot_dir, args.plot_samples)
     write_per_sample_csv(output_dir / "per_sample_metrics.csv", model_eval["samples"])
