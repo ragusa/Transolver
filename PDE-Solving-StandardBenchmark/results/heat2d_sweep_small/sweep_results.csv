@@ -1,4 +1,0 @@
-name,n_hidden,n_layers,n_heads,slice_num,epochs,best_checkpoint_epoch,best_validation_relative_l2,test_relative_l2_from_best_validation,test_mse_from_best_validation,final_train_loss,runtime_seconds,checkpoint,plot_dir
-h64_l3_heads4,64,3,4,16,50,18,0.4668804208437602,0.44984345965915257,0.003673130397752781,0.2579813346503273,86.79806351661682,results\heat2d_sweep_small\h64_l3_heads4\checkpoints\best.pt,results\heat2d_sweep_small\h64_l3_heads4\plots
-h96_l4_heads4,96,4,4,16,50,4,0.4606615404287974,0.46290171643098194,0.007535018784336798,0.18301021301793674,100.66060495376587,results\heat2d_sweep_small\h96_l4_heads4\checkpoints\best.pt,results\heat2d_sweep_small\h96_l4_heads4\plots
-h128_l4_heads4,128,4,4,16,50,49,0.4349302781952752,0.4256821953588062,0.004352391791245382,0.18261143214823233,89.79470086097717,results\heat2d_sweep_small\h128_l4_heads4\checkpoints\best.pt,results\heat2d_sweep_small\h128_l4_heads4\plots
