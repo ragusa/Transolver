@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import math
 import os
 import time
 from collections import defaultdict
@@ -63,6 +64,17 @@ def build_parser():
     parser.add_argument("--eval-every", type=int, default=1)
     parser.add_argument("--print-every", type=int, default=100)
     parser.add_argument("--seed", type=int, default=0)
+    # LR scheduler
+    parser.add_argument(
+        "--lr-scheduler",
+        type=str,
+        default="none",
+        choices=["none", "onecycle", "cosine", "reduce_on_plateau"],
+    )
+    parser.add_argument("--min-lr", type=float, default=1e-5)
+    parser.add_argument("--lr-plateau-factor", type=float, default=0.5)
+    parser.add_argument("--lr-plateau-patience", type=int, default=5)
+    parser.add_argument("--max-grad-norm", type=float, default=None)
     return parser
 
 
@@ -427,6 +439,7 @@ def write_epoch_metrics_csv(path, rows):
     fieldnames = [
         "epoch",
         "train_loss",
+        "current_lr",
         "train_seconds",
         "train_samples_per_second",
         "eval_seconds",
@@ -479,7 +492,7 @@ def compact_eval_summary(eval_result):
     }
 
 
-def save_checkpoint(path, model, optimizer, args, stats, epoch, train_loss, eval_metrics, best_rel_l2):
+def save_checkpoint(path, model, optimizer, scheduler, args, stats, epoch, train_loss, eval_metrics, best_rel_l2):
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
@@ -491,6 +504,7 @@ def save_checkpoint(path, model, optimizer, args, stats, epoch, train_loss, eval
             "train_loss": train_loss,
             "eval_metrics": eval_metrics,
             "best_validation_relative_l2": best_rel_l2,
+            **({"scheduler_state_dict": scheduler.state_dict()} if scheduler is not None else {}),
         },
         path,
     )
@@ -601,6 +615,33 @@ def run_overfit(args):
     print(f"plots: {plot_dir}")
 
 
+def build_scheduler(optimizer, args, steps_per_epoch_effective):
+    """Return a scheduler or None.  steps_per_epoch_effective accounts for grad accumulation."""
+    if args.lr_scheduler == "none":
+        return None
+    elif args.lr_scheduler == "onecycle":
+        return torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=args.lr,
+            epochs=args.epochs,
+            steps_per_epoch=steps_per_epoch_effective,
+        )
+    elif args.lr_scheduler == "cosine":
+        return torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=args.epochs, eta_min=args.min_lr
+        )
+    elif args.lr_scheduler == "reduce_on_plateau":
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=args.lr_plateau_factor,
+            patience=args.lr_plateau_patience,
+            min_lr=args.min_lr,
+        )
+    else:
+        raise ValueError(f"Unknown --lr-scheduler: {args.lr_scheduler!r}")
+
+
 def run_train(args):
     if args.batch_size != 1:
         raise ValueError("Heat2D currently supports --batch-size 1 only.")
@@ -629,6 +670,8 @@ def run_train(args):
     args.input_feature_names = train_feature_metadata["input_feature_names"]
     model = make_model(args, device, fun_dim=train_dataset.num_input_features)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    _steps_eff = math.ceil(len(train_loader) / args.grad_accum_steps)
+    scheduler = build_scheduler(optimizer, args, _steps_eff)
     criterion = torch.nn.MSELoss()
 
     config_path = output_dir / "config.json"
@@ -642,6 +685,7 @@ def run_train(args):
     final_train_loss = None
     final_val_eval = None
     train_losses = []
+    lr_history = []
     val_relative_l2 = []
     epoch_diagnostics = []
     non_blocking = bool(args.pin_memory and device.type == "cuda")
@@ -676,14 +720,20 @@ def run_train(args):
             train_loss_total += loss.item()
 
             if step % args.grad_accum_steps == 0 or step == len(train_loader):
+                if args.max_grad_norm is not None:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 optimizer.step()
                 optimizer.zero_grad()
+                if scheduler is not None and args.lr_scheduler == "onecycle":
+                    scheduler.step()
 
         synchronize_if_cuda(device)
         train_seconds = time.perf_counter() - train_start
         train_samples_per_second = len(train_dataset) / max(train_seconds, 1e-12)
         final_train_loss = train_loss_total / len(train_loader)
         train_losses.append(final_train_loss)
+        if scheduler is not None and args.lr_scheduler == "cosine":
+            scheduler.step()
 
         eval_seconds = None
         val_mse = None
@@ -711,6 +761,7 @@ def run_train(args):
                     checkpoint_dir / "best.pt",
                     model,
                     optimizer,
+                    scheduler,
                     args,
                     stats,
                     epoch,
@@ -727,9 +778,13 @@ def run_train(args):
                 )
         else:
             val_relative_l2.append(None)
+        if scheduler is not None and args.lr_scheduler == "reduce_on_plateau" and should_eval:
+            scheduler.step(val_rel_l2_score)
         synchronize_if_cuda(device)
         epoch_seconds = time.perf_counter() - epoch_start
         epoch_samples_per_second = len(train_dataset) / max(epoch_seconds, 1e-12)
+        current_lr = optimizer.param_groups[0]["lr"]
+        lr_history.append(current_lr)
         epoch_row = {
             "epoch": epoch,
             "train_loss": final_train_loss,
@@ -741,10 +796,12 @@ def run_train(args):
             "val_mse": val_mse,
             "val_relative_l2": val_rel_l2_score,
             "best_validation_relative_l2": best_val_rel_l2,
+            "current_lr": current_lr,
         }
         epoch_diagnostics.append(epoch_row)
         message = (
             f"epoch {epoch:04d} train_loss {final_train_loss:.8e} "
+            f"lr {current_lr:.4e} "
             f"train_seconds {train_seconds:.2f} train_samples_per_second {train_samples_per_second:.2f} "
             f"epoch_seconds {epoch_seconds:.2f} epoch_samples_per_second {epoch_samples_per_second:.2f}"
         )
@@ -760,6 +817,7 @@ def run_train(args):
         checkpoint_dir / "last.pt",
         model,
         optimizer,
+        scheduler,
         args,
         stats,
         args.epochs,
@@ -789,6 +847,7 @@ def run_train(args):
     learning_curves = {
         "train_loss": train_losses,
         "val_relative_l2": val_relative_l2,
+        "lr_history": lr_history,
         "epoch_diagnostics": epoch_diagnostics,
     }
     with (output_dir / "learning_curves.json").open("w", encoding="utf-8") as f:
@@ -862,6 +921,7 @@ def run_train(args):
             "fun_dim": args.fun_dim,
         },
         "epochs": args.epochs,
+        "lr_scheduler": args.lr_scheduler,
         "best_checkpoint_epoch": int(best_checkpoint["epoch"]),
         "final_train_loss": final_train_loss,
         "best_validation_relative_l2": best_val_rel_l2,

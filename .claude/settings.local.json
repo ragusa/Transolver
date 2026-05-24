@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "PowerShell(python -m py_compile \"c:\\\\Users\\\\jean.ragusa\\\\Documents\\\\Github\\\\Transolver\\\\PDE-Solving-StandardBenchmark\\\\exp_heat2d.py\" 2>&1)",
+      "PowerShell(python -m py_compile \"c:\\\\Users\\\\jean.ragusa\\\\Documents\\\\Github\\\\Transolver\\\\tests\\\\heat2d\\\\test_scheduler_smoke.py\" 2>&1)",
+      "PowerShell(if \\($LASTEXITCODE -eq 0\\) { \"exp_heat2d.py OK\" } else { \"SYNTAX ERROR in exp_heat2d.py\" })",
+      "PowerShell(if \\($LASTEXITCODE -eq 0\\) { \"test_scheduler_smoke.py OK\" } else { \"SYNTAX ERROR in test_scheduler_smoke.py\" })"
+    ]
+  }
+}
