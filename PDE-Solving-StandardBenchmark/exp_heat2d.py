@@ -30,6 +30,7 @@ def build_parser():
     parser.add_argument("--test-split", type=str, default="test")
     parser.add_argument("--sample-name", type=str, default=None)
     parser.add_argument("--split-seed", type=int, default=0)
+    parser.add_argument("--split-mode", type=str, default="sample", choices=["sample", "geometry"])
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--max-train-samples", type=int, default=None)
     parser.add_argument("--max-val-samples", type=int, default=None)
@@ -212,6 +213,7 @@ def make_dataset(args, split, max_samples=None, sample_names=None):
         split=split,
         sample_names=sample_names,
         split_seed=args.split_seed,
+        split_mode=args.split_mode,
         max_samples=max_samples,
         include_boundary_mask=args.include_boundary_mask,
         feature_set=args.feature_set,
@@ -236,6 +238,57 @@ def feature_metadata(dataset):
         "feature_set": dataset.feature_set,
         "input_feature_names": list(dataset.input_feature_names),
     }
+
+
+def split_metadata(*datasets):
+    if not datasets:
+        return {"split_mode": "sample"}
+    split_mode = datasets[0].split_mode
+    metadata = {"split_mode": split_mode}
+    selected = [dataset.selected_split_diagnostics for dataset in datasets]
+    for dataset, diagnostics in zip(datasets, selected):
+        split = dataset.split
+        if split in ("train", "val", "test"):
+            metadata[f"{split}_samples"] = diagnostics["sample_count"]
+            if split_mode == "geometry":
+                metadata[f"{split}_geometry_count"] = diagnostics["geometry_group_count"]
+    if split_mode == "geometry":
+        full = datasets[0].split_diagnostics
+        metadata.update(
+            {
+                "geometry_group_count": full["geometry_group_count"],
+                "geometry_groups_disjoint": full["geometry_groups_disjoint"],
+            }
+        )
+    return metadata
+
+
+def write_split_summary(path, train_dataset, val_dataset, test_dataset):
+    summary = split_metadata(train_dataset, val_dataset, test_dataset)
+    summary.update(
+        {
+            "train_samples": len(train_dataset),
+            "val_samples": len(val_dataset),
+            "test_samples": len(test_dataset),
+        }
+    )
+    if train_dataset.split_mode == "geometry":
+        train_groups = {sample["geometry_key"] for sample in train_dataset.samples}
+        val_groups = {sample["geometry_key"] for sample in val_dataset.samples}
+        test_groups = {sample["geometry_key"] for sample in test_dataset.samples}
+        summary.update(
+            {
+                "train_geometry_count": len(train_groups),
+                "val_geometry_count": len(val_groups),
+                "test_geometry_count": len(test_groups),
+                "geometry_groups_disjoint": not (
+                    (train_groups & val_groups) or (train_groups & test_groups) or (val_groups & test_groups)
+                ),
+            }
+        )
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    return summary
 
 
 def args_to_jsonable(args):
@@ -546,7 +599,10 @@ def run_smoke(args):
         y_min = sample_min if y_min is None else min(y_min, sample_min)
         y_max = sample_max if y_max is None else max(y_max, sample_max)
 
+    print(f"split_mode: {dataset.split_mode}")
     print(f"number of samples: {len(dataset)}")
+    if dataset.split_mode == "geometry":
+        print(f"number of geometry groups: {dataset.selected_split_diagnostics['geometry_group_count']}")
     print(f"x shape: {tuple(first['pos'].shape)}")
     print(f"fx shape: {tuple(first['node_features'].shape)}")
     print(f"y shape: {tuple(first['target'].shape)}")
@@ -660,6 +716,7 @@ def run_train(args):
     val_dataset = make_dataset(args, args.val_split, max_samples=args.max_val_samples)
     test_dataset = make_dataset(args, args.test_split, max_samples=args.max_test_samples)
     train_feature_metadata = feature_metadata(train_dataset)
+    train_split_metadata = split_metadata(train_dataset, val_dataset, test_dataset)
     train_loader = make_loader(train_dataset, args, shuffle=True)
     val_loader = make_loader(val_dataset, args, shuffle=False)
     test_loader = make_loader(test_dataset, args, shuffle=False)
@@ -680,6 +737,7 @@ def run_train(args):
         json.dump(args_to_jsonable(args), f, indent=2)
     with stats_path.open("w", encoding="utf-8") as f:
         json.dump(stats_to_jsonable(stats), f, indent=2)
+    split_summary = write_split_summary(output_dir / "split_summary.json", train_dataset, val_dataset, test_dataset)
 
     best_val_rel_l2 = float("inf")
     final_train_loss = None
@@ -694,6 +752,11 @@ def run_train(args):
     print(f"train_samples: {len(train_dataset)}")
     print(f"val_samples: {len(val_dataset)}")
     print(f"test_samples: {len(test_dataset)}")
+    print(f"split_mode: {args.split_mode}")
+    if args.split_mode == "geometry":
+        print(f"train_geometry_count: {split_summary['train_geometry_count']}")
+        print(f"val_geometry_count: {split_summary['val_geometry_count']}")
+        print(f"test_geometry_count: {split_summary['test_geometry_count']}")
     print(f"device: {device}")
     print(f"normalization: {'on' if normalize else 'off'}")
     print(f"feature_set: {train_dataset.feature_set}")
@@ -862,6 +925,7 @@ def run_train(args):
 
     metrics = {
         **train_feature_metadata,
+        **train_split_metadata,
         "train_samples": len(train_dataset),
         "val_samples": len(val_dataset),
         "test_samples": len(test_dataset),
@@ -907,6 +971,7 @@ def run_train(args):
         "output_dir": str(output_dir),
         "data_path": args.data_path,
         **train_feature_metadata,
+        **train_split_metadata,
         "train_split": args.train_split,
         "val_split": args.val_split,
         "test_split": args.test_split,
@@ -977,6 +1042,8 @@ def run_eval(args):
         args.include_boundary_mask = bool(saved_args["include_boundary_mask"])
     if "split_seed" in saved_args:
         args.split_seed = int(saved_args["split_seed"])
+    if "split_mode" in saved_args:
+        args.split_mode = saved_args["split_mode"]
     resolve_cli_feature_set(args)
     normalize = not bool(saved_args.get("no_normalize", args.no_normalize))
 
@@ -1013,6 +1080,7 @@ def run_eval(args):
         "checkpoint": str(checkpoint_path),
         "checkpoint_epoch": int(checkpoint.get("epoch", -1)),
         "test_split": args.test_split,
+        "split_mode": args.split_mode,
         "normalize": normalize,
         **eval_feature_metadata,
         "model": compact_eval_summary(model_eval),
@@ -1031,6 +1099,7 @@ def run_eval(args):
         "checkpoint": str(checkpoint_path),
         "checkpoint_epoch": diagnostics["checkpoint_epoch"],
         "test_split": args.test_split,
+        "split_mode": args.split_mode,
         **eval_feature_metadata,
         "test_samples": len(test_dataset),
         "overall_mse": diagnostics["model"]["overall"]["mean_sample_mse"],

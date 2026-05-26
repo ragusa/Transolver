@@ -1,5 +1,6 @@
 import json
 import os
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -69,6 +70,7 @@ class Heat2DDataset(Dataset):
         sample_names=None,
         split_seed=0,
         split_fractions=(0.8, 0.1, 0.1),
+        split_mode="sample",
         max_samples=None,
         include_boundary_mask=False,
         feature_set=None,
@@ -76,6 +78,9 @@ class Heat2DDataset(Dataset):
     ):
         self.dataset_roots = resolve_heat2d_dataset_roots(dataset_dir)
         self.split = split
+        self.split_mode = split_mode
+        self.split_seed = split_seed
+        self.split_fractions = split_fractions
         self.include_boundary_mask = include_boundary_mask
         self.feature_set = _resolve_feature_set(feature_set, include_boundary_mask)
         self.preload = preload
@@ -84,7 +89,8 @@ class Heat2DDataset(Dataset):
         self.input_feature_names = list(self.embedding_builder.feature_names)
 
         samples = self._discover_samples()
-        samples = _assign_sample_level_splits(samples, split_seed, split_fractions)
+        samples = assign_heat2d_splits(samples, split_seed, split_fractions, split_mode)
+        self.split_diagnostics = summarize_heat2d_split(samples, split_mode)
 
         if split != "all":
             samples = [sample for sample in samples if sample["split"] == split]
@@ -93,6 +99,7 @@ class Heat2DDataset(Dataset):
             samples = [sample for sample in samples if sample["sample_name"] in wanted]
         if max_samples is not None:
             samples = samples[: int(max_samples)]
+        self.selected_split_diagnostics = summarize_heat2d_split(samples, split_mode)
 
         if not samples:
             roots = ", ".join(str(path) for path in self.dataset_roots)
@@ -139,6 +146,8 @@ class Heat2DDataset(Dataset):
                         "root": root,
                         "path": path,
                         "sample_name": _sample_name(root, path),
+                        "geometry_key": heat2d_geometry_key(root, path),
+                        "geometry_dir": str(path.parent.relative_to(root)).replace("\\", "/"),
                     }
                     for path in fom_samples
                 )
@@ -316,6 +325,109 @@ def _assign_sample_level_splits(samples, split_seed, split_fractions):
     for index, sample in enumerate(samples):
         assigned.append({**sample, "split": split_by_index[index]})
     return assigned
+
+
+def assign_heat2d_splits(samples, split_seed=0, split_fractions=(0.8, 0.1, 0.1), split_mode="sample"):
+    if split_mode == "sample":
+        return _assign_sample_level_splits(samples, split_seed, split_fractions)
+    if split_mode == "geometry":
+        return _assign_geometry_level_splits(samples, split_seed, split_fractions)
+    raise ValueError("split_mode must be 'sample' or 'geometry'.")
+
+
+def _assign_geometry_level_splits(samples, split_seed, split_fractions):
+    if any(sample["schema"] != "fom" for sample in samples):
+        raise ValueError(
+            "--split-mode geometry is supported only for raw-FOM samples under geometries/geom_*/sample_*.npz."
+        )
+
+    samples = sorted(samples, key=lambda sample: str(sample["path"]))
+    groups = defaultdict(list)
+    for index, sample in enumerate(samples):
+        groups[sample["geometry_key"]].append(index)
+
+    group_keys = sorted(groups)
+    indices = np.arange(len(group_keys))
+    rng = np.random.default_rng(split_seed)
+    rng.shuffle(indices)
+
+    n_train, n_val = _split_counts(len(group_keys), split_fractions)
+    split_by_group = {}
+    for rank, index in enumerate(indices):
+        if rank < n_train:
+            split = "train"
+        elif rank < n_train + n_val:
+            split = "val"
+        else:
+            split = "test"
+        split_by_group[group_keys[int(index)]] = split
+
+    assigned = []
+    for sample in samples:
+        assigned.append({**sample, "split": split_by_group[sample["geometry_key"]]})
+    return assigned
+
+
+def _split_counts(n_total, split_fractions):
+    train_fraction, val_fraction, _ = split_fractions
+    if n_total >= 3:
+        n_train = max(1, int(round(train_fraction * n_total)))
+        n_val = max(1, int(round(val_fraction * n_total)))
+        if n_train + n_val >= n_total:
+            n_train = max(1, n_total - 2)
+            n_val = 1
+    elif n_total == 2:
+        n_train, n_val = 1, 0
+    else:
+        n_train, n_val = 1, 0
+    return n_train, n_val
+
+
+def heat2d_geometry_key(dataset_root, sample_path):
+    root = Path(dataset_root).resolve()
+    path = Path(sample_path).resolve()
+    geometry_dir = path.parent
+    try:
+        rel_geometry_dir = geometry_dir.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Sample path {sample_path} is not under dataset root {dataset_root}") from exc
+    parts = rel_geometry_dir.parts
+    if len(parts) < 2 or parts[-2] != "geometries" or not parts[-1].startswith("geom_"):
+        raise ValueError(f"Could not identify Heat2D geometry directory for sample path: {sample_path}")
+    return f"{root}::{rel_geometry_dir.as_posix()}"
+
+
+def summarize_heat2d_split(samples, split_mode="sample"):
+    summary = {
+        "split_mode": split_mode,
+        "sample_count": len(samples),
+        "train_samples": sum(1 for sample in samples if sample.get("split") == "train"),
+        "val_samples": sum(1 for sample in samples if sample.get("split") == "val"),
+        "test_samples": sum(1 for sample in samples if sample.get("split") == "test"),
+    }
+    if split_mode != "geometry":
+        return summary
+
+    groups_by_split = {"train": set(), "val": set(), "test": set()}
+    for sample in samples:
+        split = sample.get("split")
+        if split in groups_by_split and "geometry_key" in sample:
+            groups_by_split[split].add(sample["geometry_key"])
+    train_groups = groups_by_split["train"]
+    val_groups = groups_by_split["val"]
+    test_groups = groups_by_split["test"]
+    summary.update(
+        {
+            "geometry_group_count": len(train_groups | val_groups | test_groups),
+            "train_geometry_count": len(train_groups),
+            "val_geometry_count": len(val_groups),
+            "test_geometry_count": len(test_groups),
+            "geometry_groups_disjoint": not (
+                (train_groups & val_groups) or (train_groups & test_groups) or (val_groups & test_groups)
+            ),
+        }
+    )
+    return summary
 
 
 def _sample_name(root, path):

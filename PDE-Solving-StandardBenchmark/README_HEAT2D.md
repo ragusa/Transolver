@@ -6,7 +6,9 @@ This adapter loads Heat2D FOM datasets with samples discovered from:
 geometries/geom_*/sample_*.npz
 ```
 
-Multiple dataset roots can be passed after `--data_path`. Sample-level splits are deterministic and use 80% train, 10% validation, and 10% test across the combined discovered sample list.
+Multiple dataset roots can be passed after `--data_path`. The default
+`--split-mode sample` split is deterministic and uses 80% train, 10%
+validation, and 10% test across the combined discovered sample list.
 
 By default, each raw-FOM sample is loaded as:
 
@@ -96,6 +98,42 @@ python exp_heat2d.py \
 ```
 
 The command prints the number of loaded samples, representative `x`, `fx`, and `y` shapes, the min/max of `y`, and whether all loaded arrays are finite.
+
+## Split Modes
+
+The raw-FOM path supports explicit sample-level and geometry-level splitting:
+
+```bash
+python exp_heat2d.py \
+  --mode train \
+  --data_path "${DATA_ROOTS[@]}" \
+  --split-mode sample \
+  --output-dir results/heat2d_fom_sample_split
+```
+
+```bash
+python exp_heat2d.py \
+  --mode train \
+  --data_path "${DATA_ROOTS[@]}" \
+  --split-mode geometry \
+  --output-dir results/heat2d_fom_geometry_split
+```
+
+`--split-mode sample` is the current default. It tests interpolation over
+parameters and samples, so samples from the same geometry may appear in
+train, validation, and test splits.
+
+`--split-mode geometry` groups raw-FOM files by dataset root plus geometry
+directory before splitting. This tests generalization to unseen geometries by
+ensuring all samples from one geometry group are assigned to only one split.
+The geometry key intentionally includes the resolved dataset root, so
+`heat2d_fom_train_0/geometries/geom_00000` and
+`heat2d_fom_train_1/geometries/geom_00000` are treated as different geometry
+groups unless future code explicitly verifies that their geometry metadata are
+identical.
+
+Training runs write split metadata to `config.json`, `metrics.json`,
+`run_summary.json`, and `split_summary.json`.
 
 ## Performance Knobs
 
